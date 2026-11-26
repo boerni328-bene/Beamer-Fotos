@@ -164,7 +164,7 @@ class PhotoStore(
     }.filter { it.photos.isNotEmpty() }.sortedByDescending { it.latest }
 
     /** Reste abgebrochener Übertragungen (älter als eine Stunde) entfernen. */
-    private fun cleanUpLeftovers(files: Array<File>) {
+    private fun cleanUpLeftovers(files: Array<out File>) {
         val limit = System.currentTimeMillis() - 60 * 60 * 1000L
         files.filter { it.name.endsWith(".part") && it.lastModified() < limit }.forEach { it.delete() }
     }

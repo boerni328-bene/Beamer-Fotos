@@ -89,7 +89,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-private enum class Panel { NONE, MENU, STRIP }
+private enum class Overlay { NONE, MENU, STRIP }
 
 private const val TRANSITION_MS = 900
 
@@ -130,7 +130,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
     var paused by remember { mutableStateOf(false) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
-    var panel by remember { mutableStateOf(Panel.NONE) }
+    var panel by remember { mutableStateOf(Overlay.NONE) }
     var pendingNew by remember { mutableIntStateOf(0) }
     val rootFocus = remember { FocusRequester() }
 
@@ -202,7 +202,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             photos.addAll(position, fresh)
             val first = pendingNew == 0
             pendingNew += fresh.size
-            if (first && panel == Panel.NONE && zoom == 1f) goTo(index + 1, 1)
+            if (first && panel == Overlay.NONE && zoom == 1f) goTo(index + 1, 1)
         } else {
             photos.addAll(fresh)
         }
@@ -210,7 +210,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
 
     // Weiterschalten nach der Anzeigedauer (nicht bei Pause, offenem Menü oder Vergrößerung).
     LaunchedEffect(photos.getOrNull(index)?.key, paused, settings.intervalSec, panel, zoom) {
-        if (!paused && settings.intervalSec > 0 && panel == Panel.NONE && zoom == 1f && photos.size > 1) {
+        if (!paused && settings.intervalSec > 0 && panel == Overlay.NONE && zoom == 1f && photos.size > 1) {
             delay(settings.intervalSec * 1000L + TRANSITION_MS)
             next(manual = false)
         }
@@ -242,9 +242,9 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
         }
     }
 
-    LaunchedEffect(panel) { if (panel == Panel.NONE) runCatching { rootFocus.requestFocus() } }
-    BackHandler(enabled = panel != Panel.NONE) { panel = Panel.NONE }
-    BackHandler(enabled = panel == Panel.NONE && zoom > 1f) {
+    LaunchedEffect(panel) { if (panel == Overlay.NONE) runCatching { rootFocus.requestFocus() } }
+    BackHandler(enabled = panel != Overlay.NONE) { panel = Overlay.NONE }
+    BackHandler(enabled = panel == Overlay.NONE && zoom > 1f) {
         zoom = 1f
         pan = Offset.Zero
     }
@@ -257,7 +257,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             .background(Color.Black)
             .focusRequester(rootFocus)
             .onPreviewKeyEvent { e ->
-                if (panel != Panel.NONE || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (panel != Overlay.NONE || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
                     Key.DirectionRight, Key.MediaNext, Key.MediaFastForward -> {
                         if (zoom > 1f) panBy(-0.1f, 0f) else next(manual = true)
@@ -268,11 +268,11 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
                         true
                     }
                     Key.DirectionUp -> {
-                        if (zoom > 1f) panBy(0f, 0.1f) else panel = Panel.MENU
+                        if (zoom > 1f) panBy(0f, 0.1f) else panel = Overlay.MENU
                         true
                     }
                     Key.DirectionDown -> {
-                        if (zoom > 1f) panBy(0f, -0.1f) else if (photos.isNotEmpty()) panel = Panel.STRIP
+                        if (zoom > 1f) panBy(0f, -0.1f) else if (photos.isNotEmpty()) panel = Overlay.STRIP
                         true
                     }
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.MediaPlayPause, Key.Spacebar -> {
@@ -293,7 +293,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
                         true
                     }
                     Key.Menu -> {
-                        panel = Panel.MENU
+                        panel = Overlay.MENU
                         true
                     }
                     else -> false
@@ -368,7 +368,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
         if (photos.isEmpty()) EmptyShow(url)
 
         // Einblendungen
-        if (settings.showInfo && current != null && panel == Panel.NONE) {
+        if (settings.showInfo && current != null && panel == Overlay.NONE) {
             Column(Modifier.align(Alignment.BottomStart).padding(28.dp)) {
                 Text(current.album, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = shadowText)
                 Text(
@@ -389,7 +389,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
-        if (settings.showQr && url != null && photos.isNotEmpty() && panel == Panel.NONE) {
+        if (settings.showQr && url != null && photos.isNotEmpty() && panel == Overlay.NONE) {
             Column(
                 Modifier.align(Alignment.BottomEnd).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -401,7 +401,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
         ArrivalBanner(graph, Modifier.align(Alignment.TopCenter).padding(top = 20.dp))
 
         when (panel) {
-            Panel.MENU -> MenuPanel(
+            Overlay.MENU -> MenuPanel(
                 graph = graph,
                 paused = paused,
                 zoom = zoom,
@@ -411,25 +411,25 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
                 onZoom = {
                     zoom = if (zoom >= 3f) 1f else zoom + 1f
                     pan = Offset.Zero
-                    if (zoom > 1f) panel = Panel.NONE
+                    if (zoom > 1f) panel = Overlay.NONE
                 },
                 onDelete = {
                     current?.let { graph.store.delete(it) }
-                    panel = Panel.NONE
+                    panel = Overlay.NONE
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
-            Panel.STRIP -> Filmstrip(
+            Overlay.STRIP -> Filmstrip(
                 photos = photos,
                 currentIndex = index,
                 rotations = rotations,
                 onPick = { i ->
-                    panel = Panel.NONE
+                    panel = Overlay.NONE
                     if (i != index) goTo(i, if (i > index) 1 else -1)
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
-            Panel.NONE -> Unit
+            Overlay.NONE -> Unit
         }
     }
 }
