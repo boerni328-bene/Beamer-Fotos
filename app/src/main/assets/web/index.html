@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B2A41">
+<title>Fotos an den Beamer</title>
+<style>
+  :root { --navy:#1B2A41; --panel:#26364F; --gold:#F2C14E; --sky:#5FA8D3; --muted:#B8C4D6; --red:#E57373; --green:#81C784; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--navy); color:#fff; font:17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  main { max-width: 520px; margin: 0 auto; }
+  h1 { color:var(--gold); font-size:26px; margin:4px 0 2px; }
+  .sub { color:var(--muted); font-size:14px; margin:0 0 18px; }
+  .card { background:var(--panel); border-radius:16px; padding:16px; margin-bottom:16px; }
+  label { display:block; color:var(--muted); font-size:14px; margin-bottom:6px; }
+  input[type=text] { width:100%; font-size:18px; padding:12px 14px; border-radius:10px; border:2px solid transparent; background:#1B2A41; color:#fff; }
+  input[type=text]:focus { outline:none; border-color:var(--gold); }
+  .big { display:block; width:100%; font-size:21px; font-weight:700; padding:18px; border:0; border-radius:14px; background:var(--gold); color:var(--navy); cursor:pointer; }
+  .big:disabled { opacity:.5; }
+  .row { display:flex; gap:10px; }
+  .row button { flex:1; font-size:18px; padding:14px 6px; border:0; border-radius:12px; background:#34486A; color:#fff; cursor:pointer; }
+  .row button:active, .big:active { transform:scale(.97); }
+  .bar { height:12px; background:#1B2A41; border-radius:6px; overflow:hidden; margin:10px 0 6px; }
+  .bar div { height:100%; width:0; background:var(--gold); transition:width .2s; }
+  .status { font-size:15px; color:var(--muted); min-height:22px; }
+  .ok { color:var(--green); } .err { color:var(--red); }
+  .hint { font-size:13px; color:var(--muted); margin-top:10px; }
+  .hidden { display:none; }
+  #fehlerliste { font-size:13px; color:var(--red); margin:8px 0 0; padding-left:18px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fotos an den Beamer</h1>
+  <p class="sub" id="verbindung">Verbinde …</p>
+
+  <div class="card" id="zugangfehlt" hidden>
+    <strong class="err">Zugang abgelaufen.</strong><br>
+    Bitte den QR-Code am Beamer neu scannen. Die App „Beamer-Fotos“ muss am Beamer geöffnet sein.
+  </div>
+
+  <div id="inhalt">
+    <div class="card">
+      <label for="name">Name oder Anlass (wird zum Album am Beamer)</label>
+      <input type="text" id="name" maxlength="60" placeholder="z. B. Anna oder Urlaub Kreta" autocomplete="nickname">
+    </div>
+
+    <div class="card">
+      <button class="big" id="waehlen">📷 Fotos auswählen</button>
+      <input type="file" id="dateien" accept="image/*" multiple hidden>
+      <div id="fortschritt" class="hidden">
+        <div class="bar"><div id="balken"></div></div>
+        <div class="status" id="status"></div>
+        <ul id="fehlerliste"></ul>
+        <button class="big hidden" id="nochmal" style="margin-top:10px;background:#34486A;color:#fff">Fehlgeschlagene erneut senden</button>
+      </div>
+      <p class="hint">Während des Sendens den Bildschirm des Handys eingeschaltet lassen. Mehrere Fotos auf einmal auswählen ist möglich.</p>
+    </div>
+
+    <div class="card">
+      <label>Diashow am Beamer steuern</label>
+      <div class="row">
+        <button data-cmd="prev" aria-label="Zurück">◀</button>
+        <button data-cmd="toggle" aria-label="Pause oder weiter">⏯</button>
+        <button data-cmd="next" aria-label="Weiter">▶</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button data-cmd="start">▶ Diashow starten</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var token = new URLSearchParams(location.search).get("t") || "";
+  var nameInput = document.getElementById("name");
+  var fileInput = document.getElementById("dateien");
+  var chooseButton = document.getElementById("waehlen");
+  var retryButton = document.getElementById("nochmal");
+  var progressBox = document.getElementById("fortschritt");
+  var bar = document.getElementById("balken");
+  var statusLine = document.getElementById("status");
+  var errorList = document.getElementById("fehlerliste");
+  var IMAGE = /\.(jpe?g|png|heic|heif|webp|gif|bmp)$/i;
+  var EXT = { "image/jpeg": ".jpg", "image/png": ".png", "image/heic": ".heic", "image/heif": ".heif", "image/webp": ".webp", "image/gif": ".gif" };
+
+  var queue = [], failed = [], busy = false, sentTotal = 0, batchDone = 0, batchSize = 0;
+
+  try { nameInput.value = localStorage.getItem("albumName") || ""; } catch (e) {}
+  nameInput.addEventListener("change", function () {
+    try { localStorage.setItem("albumName", nameInput.value.trim()); } catch (e) {}
+  });
+
+  function api(path) { return path + (path.indexOf("?") < 0 ? "?" : "&") + "t=" + encodeURIComponent(token); }
+
+  function gb(bytes) { return (bytes / 1e9).toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " GB"; }
+
+  function denied() {
+    document.getElementById("zugangfehlt").hidden = false;
+    document.getElementById("inhalt").style.display = "none";
+    document.getElementById("verbindung").textContent = "Nicht verbunden";
+  }
+
+  function checkConnection() {
+    fetch(api("/api/info"), { cache: "no-store" }).then(function (r) {
+      if (r.status === 403) { denied(); return null; }
+      return r.json();
+    }).then(function (info) {
+      if (!info) return;
+      document.getElementById("verbindung").textContent =
+        "Verbunden mit dem Beamer · " + info.location + " · " + gb(info.free) + " frei";
+    }).catch(function () {
+      document.getElementById("verbindung").textContent = "Beamer nicht erreichbar – ist die App dort geöffnet?";
+    });
+  }
+
+  function fileName(file) {
+    var n = file.name || "foto";
+    if (!IMAGE.test(n)) n = n.replace(/\.[^.]*$/, "") + (EXT[file.type] || ".jpg");
+    return n;
+  }
+
+  function uploadOne(file) {
+    return new Promise(function (resolve, reject) {
+      var album = nameInput.value.trim();
+      var url = api("/api/upload?album=" + encodeURIComponent(album) + "&name=" + encodeURIComponent(fileName(file)));
+      var x = new XMLHttpRequest();
+      x.open("PUT", url);
+      x.timeout = 10 * 60 * 1000;
+      x.upload.onprogress = function (e) {
+        if (e.lengthComputable && batchSize > 0) {
+          bar.style.width = (100 * (batchDone + e.loaded / e.total) / batchSize).toFixed(1) + "%";
+        }
+      };
+      x.onload = function () {
+        if (x.status === 200) { resolve(); return; }
+        if (x.status === 403) denied();
+        var msg = "Fehler " + x.status;
+        try { msg = JSON.parse(x.responseText).error || msg; } catch (e) {}
+        reject(new Error(msg));
+      };
+      x.onerror = function () { reject(new Error("Verbindung unterbrochen")); };
+      x.ontimeout = function () { reject(new Error("Zeitüberschreitung")); };
+      x.send(file);
+    });
+  }
+
+  function show() {
+    statusLine.className = "status";
+    if (busy) {
+      statusLine.textContent = "Sende " + Math.min(batchDone + 1, batchSize) + " von " + batchSize + " …";
+    } else {
+      bar.style.width = batchSize ? "100%" : "0";
+      if (failed.length) {
+        statusLine.className = "status err";
+        statusLine.textContent = (batchSize - failed.length) + " von " + batchSize + " gesendet, " + failed.length + " fehlgeschlagen.";
+      } else {
+        statusLine.className = "status ok";
+        statusLine.textContent = "✓ " + batchSize + (batchSize === 1 ? " Foto" : " Fotos") + " am Beamer. Insgesamt gesendet: " + sentTotal + ".";
+      }
+    }
+    retryButton.classList.toggle("hidden", busy || failed.length === 0);
+  }
+
+  function run() {
+    if (busy) return;
+    busy = true;
+    chooseButton.disabled = true;
+    progressBox.classList.remove("hidden");
+    (function next() {
+      if (!queue.length) {
+        busy = false;
+        chooseButton.disabled = false;
+        show();
+        return;
+      }
+      var file = queue.shift();
+      show();
+      var attempt = function (tries) {
+        return uploadOne(file).catch(function (e) {
+          if (tries > 0 && /Verbindung|Zeit/.test(e.message)) {
+            return new Promise(function (r) { setTimeout(r, 1500); }).then(function () { return attempt(tries - 1); });
+          }
+          throw e;
+        });
+      };
+      attempt(1).then(function () {
+        sentTotal++;
+      }).catch(function (e) {
+        failed.push(file);
+        var li = document.createElement("li");
+        li.textContent = (file.name || "Foto") + ": " + e.message;
+        errorList.appendChild(li);
+      }).then(function () {
+        batchDone++;
+        next();
+      });
+    })();
+  }
+
+  function start(files) {
+    if (!files.length) return;
+    queue = files.slice();
+    failed = [];
+    errorList.textContent = "";
+    batchDone = 0;
+    batchSize = queue.length;
+    bar.style.width = "0";
+    run();
+  }
+
+  chooseButton.addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function () {
+    var files = Array.prototype.slice.call(fileInput.files || []);
+    fileInput.value = "";
+    start(files);
+  });
+  retryButton.addEventListener("click", function () { start(failed); });
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-cmd]"), function (b) {
+    b.addEventListener("click", function () {
+      fetch(api("/api/control?cmd=" + b.getAttribute("data-cmd")), { method: "POST" }).then(function (r) {
+        if (r.status === 403) denied();
+      }).catch(function () {});
+    });
+  });
+
+  checkConnection();
+})();
+</script>
+</body>
+</html>
