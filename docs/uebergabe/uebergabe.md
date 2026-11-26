@@ -6,7 +6,8 @@ Stand: 26.11.2026 · `main` = Version 0.1.0 (versionCode 1) · Regeln in `CLAUDE
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
 
 ## Stand 0.1.0
-- Erste Version, noch nie auf einem Gerät gelaufen (kein Emulator, kein Java auf dem PC).
+- Release v0.1.0 gebaut (Lint, Tests, Signatur, Berechtigungen grün), Link `…/releases/latest/download/beamer-fotos.apk` geprüft.
+- Upload-Seite mit Testserver im Browser geprüft (3 Fotos, Album, Fernbedienung). App selbst noch nie auf einem Gerät gelaufen.
 - Upload: QR-Code mit `http://<IP>:<Port>/?t=<Zugangscode>`; Seite lädt Fotos einzeln per PUT hoch, Name = Album, Wiederholung bei Abbruch.
 - Speicher: intern oder USB (App-Ordner auf dem Stick); Wahl in den Einstellungen.
 - Diashow: Dauer, 4 Übergänge, Reihenfolge, Ganz/Füllen, unscharfer Hintergrund, Infos, Wiederholen, Live-Einfügen neuer Fotos, QR in der Ecke, Drehen, Zoom 1–3× mit Verschieben, Foto löschen, Bildleiste.
