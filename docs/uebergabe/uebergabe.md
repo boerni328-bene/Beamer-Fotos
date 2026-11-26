@@ -24,5 +24,7 @@ Offene Fragen: Lizenz (Moltobene: GPL-3.0)?
 
 ## Arbeitsweise
 - Push auf `main` baut; neue `versionName` + CHANGELOG-Abschnitt ergibt ein Release (mit `beamer-fotos.apk` ohne Versionsnummer für einen festen Download-Link).
+- Nach jedem Release: `toolspk-holen.ps1` ausführen → Kopie in `apk` (nicht im Repository). 0.1.0 liegt dort.
+- Nach jedem Release `tools\apk-holen.ps1` ausführen → Kopie in `apk\` (nicht im Repository). 0.1.0 liegt dort.
 - Fehler: `gh run view <id> --log-failed`.
 - Signaturschlüssel: `D:\Claude\Projekte\Beamer-Fotos-Signatur` (Fingerabdruck steht in `build.yml`).

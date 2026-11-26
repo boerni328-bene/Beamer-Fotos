@@ -21,6 +21,8 @@ Zuerst `docs/uebergabe/uebergabe.md` lesen (einzige Übergabedatei, wird übersc
 - Vorbild sind Moltobene und Tabletten-Checker: gleiche Werkzeuge und Versionen, gleicher Build.
 - Gebaut wird nur über GitHub Actions (kein Android Studio/Java auf dem PC). Jeder Push auf `main` baut; eine neue `versionName` ergibt ein Release.
 - Jede Version: `versionCode` und `versionName` in `app/build.gradle.kts` erhöhen und Abschnitt `## [x.y.z] – Datum (versionCode n)` in `CHANGELOG.md` ergänzen, sonst bricht der Build ab.
+- Nach jedem erfolgreichen Release die APK auf den PC holen: `powershell -ExecutionPolicy Bypass -File tools\apk-holen.ps1` (landet in `apk\`, nicht im Repository, Prüfsumme wird kontrolliert).
+- Nach jedem erfolgreichen Release die APK auf den PC holen: `powershell -ExecutionPolicy Bypass -File toolspk-holen.ps1` (landet in `apk`, nicht im Repository, Prüfsumme wird kontrolliert).
 - Schritt für Schritt: kleine Versionen, der Projektinhaber prüft jede auf dem Beamer.
 - Projektinhaber ist kein Entwickler: Deutsch, kurz, vor größeren Entscheidungen fragen.
 - Texte der App: ohne direkte Anrede, neutral und knapp.

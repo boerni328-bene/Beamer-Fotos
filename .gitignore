@@ -22,6 +22,9 @@ captures/
 *.dex
 output-metadata.json
 
+# Heruntergeladene Releases (Kopie auf dem PC, siehe tools/apk-holen.ps1)
+apk/
+
 # Signaturschlüssel – niemals ins öffentliche Repository!
 *.jks
 *.p12
