@@ -154,7 +154,7 @@ fun DeviceScreen(
                 item(key = "kopf:" + location.id, span = { GridItemSpan(maxLineSpan) }) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = if (i == 0) 0.dp else 12.dp)) {
                         Text(
-                            location.label + " · " + photoCount(list.sumOf { it.photos.size }),
+                            location.label + " · " + mediaCount(list.flatMap { it.photos }),
                             color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.width(20.dp))

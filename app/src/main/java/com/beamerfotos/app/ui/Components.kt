@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,6 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
+import com.beamerfotos.app.data.Names
+import com.beamerfotos.app.data.Photo
 import com.beamerfotos.app.image.ImageLoader
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -159,6 +164,29 @@ fun Thumb(file: File, modifier: Modifier = Modifier, rotation: Int = 0) {
                 modifier = Modifier.fillMaxSize().rotate(rotation.toFloat()),
             )
         }
+        if (Names.isVideo(file.name)) {
+            // Videos erkennt man am Abspielzeichen.
+            Icon(
+                Icons.Filled.PlayArrow, contentDescription = "Video", tint = Color.White,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x99000000))
+                    .padding(4.dp),
+            )
+        }
+    }
+}
+
+/** „12 Fotos · 3 Videos“ */
+fun mediaCount(photos: List<Photo>): String {
+    val videos = photos.count { it.isVideo }
+    val images = photos.size - videos
+    return when {
+        videos == 0 -> photoCount(images)
+        images == 0 -> if (videos == 1) "1 Video" else "$videos Videos"
+        else -> photoCount(images) + " · " + (if (videos == 1) "1 Video" else "$videos Videos")
     }
 }
 

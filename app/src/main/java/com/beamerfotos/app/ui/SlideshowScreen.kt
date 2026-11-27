@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -150,6 +151,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     var panel by remember { mutableStateOf(Overlay.NONE) }
     var pendingNew by remember { mutableIntStateOf(0) }
     val rootFocus = remember { FocusRequester() }
+    val videoControl = remember { VideoControl() }
+    var videoError by remember { mutableStateOf<String?>(null) }
 
     fun endZoom() {
         zoomMode = false
@@ -235,7 +238,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
 
     // Weiterschalten nach der Anzeigedauer (nicht bei Pause, offenem Menü oder Vergrößerung).
     LaunchedEffect(photos.getOrNull(index)?.key, paused, settings.intervalSec, panel, zoomMode) {
-        if (!paused && settings.intervalSec > 0 && panel == Overlay.NONE && !zoomMode && photos.size > 1) {
+        val isVideo = photos.getOrNull(index)?.isVideo == true
+        if (!paused && settings.intervalSec > 0 && panel == Overlay.NONE && !zoomMode && photos.size > 1 && !isVideo) {
             delay(settings.intervalSec * 1000L + TRANSITION_MS)
             next(manual = false)
         }
@@ -307,11 +311,17 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                 )
                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
-                    Key.DirectionRight, Key.MediaNext, Key.MediaFastForward -> {
+                    Key.MediaFastForward, Key.MediaRewind -> {
+                        if (photos.getOrNull(index)?.isVideo == true) {
+                            videoControl.seekBy(if (e.key == Key.MediaFastForward) 10_000L else -10_000L)
+                        } else if (e.key == Key.MediaFastForward) next(manual = true) else prev()
+                        true
+                    }
+                    Key.DirectionRight, Key.MediaNext -> {
                         next(manual = true)
                         true
                     }
-                    Key.DirectionLeft, Key.MediaPrevious, Key.MediaRewind -> {
+                    Key.DirectionLeft, Key.MediaPrevious -> {
                         prev()
                         true
                     }
@@ -402,9 +412,39 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
             }
             if (currentImage != null) {
                 val kb = kenBurns.value
-                val z = if (zoomMode) zoom else kbZoom(kb)
-                val o = if (zoomMode) pan else kbPan(current, kb)
+                val z = if (zoomMode) zoom else if (current?.isVideo == true) 1f else kbZoom(kb)
+                val o = if (zoomMode) pan else if (current?.isVideo == true) Offset.Zero else kbPan(current, kb)
                 drawPhoto(currentImage, rotCurrent, settings.fit, alphaCurrent, slideCurrent, z, o)
+            }
+        }
+
+        // Videos: über dem Standbild abspielen, sobald der Übergang fertig ist; am Ende weiter.
+        if (current != null && current.isVideo && p >= 1f) {
+            key(current.key) {
+                VideoPlayer(
+                    file = current.file,
+                    paused = paused,
+                    volume = 1f,
+                    control = videoControl,
+                    onEnded = { if (settings.intervalSec > 0 && !paused) next(manual = false) },
+                    onError = { videoError = current.key },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        if (current != null && videoError == current.key) {
+            Text(
+                "Dieses Video kann der Beamer nicht abspielen (Format wird nicht unterstützt).",
+                color = Color.White, fontSize = 20.sp, style = shadowText,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xCC000000))
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
+            )
+            LaunchedEffect(current.key) {
+                delay(4000)
+                if (settings.intervalSec > 0 && !paused) next(manual = false)
             }
         }
 
@@ -455,7 +495,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
             Overlay.MENU -> MenuPanel(
                 graph = graph,
                 paused = paused,
-                hasPhoto = current != null,
+                hasPhoto = current != null && !current.isVideo,
                 canDelete = current?.readOnly == false,
                 onTogglePause = { togglePause() },
                 onRotate = { current?.let { graph.settings.rotate(it.key) } },

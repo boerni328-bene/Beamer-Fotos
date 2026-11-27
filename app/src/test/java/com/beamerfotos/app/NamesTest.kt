@@ -43,6 +43,17 @@ class NamesTest {
     }
 
     @Test
+    fun videosWerdenErkannt() {
+        assertTrue(Names.isVideo("Film.MOV"))
+        assertTrue(Names.isVideo("urlaub.mkv"))
+        assertTrue(Names.isVideo("alt.avi"))
+        assertFalse(Names.isVideo("foto.jpg"))
+        assertTrue(Names.isMedia("clip.mp4"))
+        assertEquals("clip.mp4", Names.fileName("clip.mp4"))
+        assertNull(Names.fileName("liste.txt"))
+    }
+
+    @Test
     fun absenderWirdBereinigt() {
         assertEquals("Anna", Names.senderName("  Anna "))
         assertEquals("", Names.senderName(null))

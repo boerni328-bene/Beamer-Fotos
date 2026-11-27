@@ -182,7 +182,7 @@ fun AlbumCard(album: Album, onClick: () -> Unit) {
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             val where = if (album.location.removable) " · ${album.location.label}" else ""
-            Text(photoCount(album.photos.size) + where, color = Muted, fontSize = 14.sp)
+            Text(mediaCount(album.photos) + where, color = Muted, fontSize = 14.sp)
         }
     }
 }

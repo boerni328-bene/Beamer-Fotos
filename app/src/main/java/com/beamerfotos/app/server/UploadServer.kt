@@ -126,7 +126,7 @@ class UploadServer(
         val length = r.contentLength
             ?: return Http.json(411, "ok" to false, "error" to "Größe der Datei fehlt.")
         if (length <= 0 || length > MAX_BYTES) {
-            return Http.json(413, "ok" to false, "error" to "Datei zu groß (höchstens 300 MB).")
+            return Http.json(413, "ok" to false, "error" to "Datei zu groß (höchstens 8 GB).")
         }
         return when (val result = store.save(r.query["album"], r.query["sender"], r.query["name"], length, input)) {
             is SaveResult.Ok -> Http.json(200, "ok" to true, "name" to result.file.name)
@@ -148,6 +148,6 @@ class UploadServer(
 
     private companion object {
         val PORTS = (8080..8099).toList()
-        const val MAX_BYTES = 300L * 1024 * 1024
+        const val MAX_BYTES = 8L * 1024 * 1024 * 1024
     }
 }

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.4.0] – 2026-11-27 (versionCode 5)
+
+### Neu
+- **Videos:** MP4, MOV, MKV, AVI (auch WEBM, 3GP). Von der Handy-Seite senden („Fotos oder Videos auswählen“, bis 8 GB je Datei) oder vom Beamer und USB-Stick zeigen. In der Diashow läuft jedes Video bis zum Ende mit Ton, dann geht es weiter; OK hält an, ⏪ ⏩ auf der Fernbedienung springen 10 Sekunden. Im Raster tragen Videos ein Abspielzeichen.
+- Welche Videos abspielbar sind, hängt von den Decodern des Beamers ab; nicht abspielbare Videos werden mit einem Hinweis übersprungen.
+
 ## [0.3.0] – 2026-11-27 (versionCode 4)
 
 ### Neu

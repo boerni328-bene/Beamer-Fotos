@@ -2,6 +2,7 @@ package com.beamerfotos.app.data
 
 import android.content.Context
 import android.media.ExifInterface
+import android.media.MediaMetadataRetriever
 import android.os.Environment
 import com.beamerfotos.app.image.ImageLoader
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
 
 /** Ein Foto; [sender] ist der Name des Handys, von dem es kam (leer, wenn unbekannt). */
@@ -32,6 +34,7 @@ data class Photo(
     val readOnly: Boolean = false,
 ) {
     val key: String get() = file.absolutePath
+    val isVideo: Boolean get() = Names.isVideo(file.name)
 }
 
 /** Ein Speicherort: intern oder ein USB-Speicher. Fotos liegen in <root>/<Album>/<Datei>. */
@@ -116,7 +119,7 @@ class PhotoStore(
     /** Speichert ein Foto in <Album>/<Absender>/; ohne Absender direkt im Album. */
     fun save(albumRaw: String?, senderRaw: String?, nameRaw: String?, length: Long, input: InputStream): SaveResult {
         val name = Names.fileName(nameRaw)
-            ?: return SaveResult.Error(415, "Nur Fotos (JPG, PNG, HEIC, WEBP, GIF) werden angenommen.")
+            ?: return SaveResult.Error(415, "Nur Fotos (JPG, PNG, HEIC, WEBP, GIF) und Videos (MP4, MOV, MKV, AVI) werden angenommen.")
         val location = uploadLocation()
         if (location.free() < length + RESERVE_BYTES) {
             return SaveResult.Error(507, "Der Speicher am Beamer ist voll.")
@@ -305,7 +308,7 @@ class PhotoStore(
 
     private fun photosIn(files: Array<out File>, album: String, sender: String): List<Photo> {
         cleanUpLeftovers(files)
-        return files.filter { it.isFile && Names.isImage(it.name) }.map { photo(it, album, sender) }
+        return files.filter { it.isFile && Names.isMedia(it.name) }.map { photo(it, album, sender) }
     }
 
     /** Reste abgebrochener Übertragungen (älter als eine Stunde) entfernen. */
@@ -326,11 +329,28 @@ class PhotoStore(
     }
 
     /** Aufnahmezeit aus den EXIF-Daten (bleibt auch bei iPhone-Fotos erhalten). */
-    private fun readCaptured(file: File): Long? = try {
+    private fun readCaptured(file: File): Long? = if (Names.isVideo(file.name)) videoCaptured(file) else try {
         val exif = ExifInterface(file.absolutePath)
         val text = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
             ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
         text?.let { SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).parse(it)?.time }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Aufnahmezeit eines Videos (z. B. „20261127T143000.000Z“). */
+    private fun videoCaptured(file: File): Long? = try {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(file.absolutePath)
+            val text = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)
+            text?.takeIf { it.length >= 15 && !it.startsWith("1904") }?.let {
+                SimpleDateFormat("yyyyMMdd'T'HHmmss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+                    .parse(it.take(15))?.time
+            }
+        } finally {
+            retriever.release()
+        }
     } catch (e: Exception) {
         null
     }

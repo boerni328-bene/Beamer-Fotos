@@ -144,7 +144,7 @@ fun AlbumScreen(
                 Text(album.name, color = Gold, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Text(
                     if (selecting) "${chosen.size} ausgewählt · OK markiert · Zurück beendet die Auswahl"
-                    else photoCount(photos.size) + (sender?.let { " von ${senderLabel(it)}" } ?: "") +
+                    else mediaCount(photos) + (sender?.let { " von ${senderLabel(it)}" } ?: "") +
                         " · " + album.location.label,
                     color = Muted, fontSize = 16.sp,
                 )

@@ -6,7 +6,14 @@ object Names {
 
     fun extensionOf(name: String): String = name.substringAfterLast('.', "").lowercase()
 
+    val videoExtensions = setOf("mp4", "m4v", "mov", "mkv", "avi", "webm", "3gp")
+
     fun isImage(name: String): Boolean = !name.startsWith(".") && extensionOf(name) in imageExtensions
+
+    fun isVideo(name: String): Boolean = !name.startsWith(".") && extensionOf(name) in videoExtensions
+
+    /** Foto oder Video, das die App zeigen kann. */
+    fun isMedia(name: String): Boolean = isImage(name) || isVideo(name)
 
     /**
      * Erlaubt Buchstaben (auch Umlaute), Ziffern, Leerzeichen und - _ . ( ); alles andere wird zu „_“.
@@ -29,10 +36,10 @@ object Names {
     /** Name des Absenders (Handy); leer, wenn keiner angegeben ist. */
     fun senderName(raw: String?): String = clean(raw ?: "", 40)
 
-    /** Dateiname eines Fotos oder null, wenn es kein unterstütztes Bild ist. */
+    /** Dateiname eines Fotos oder Videos; null, wenn das Format nicht unterstützt wird. */
     fun fileName(raw: String?): String? {
         val base = clean(raw?.substringAfterLast('/')?.substringAfterLast('\\') ?: "", 100)
-        return if (isImage(base)) base else null
+        return if (isMedia(base)) base else null
     }
 
     /** Hängt „(2)“, „(3)“ … an, bis der Name frei ist. */

@@ -53,15 +53,15 @@
     </div>
 
     <div class="card">
-      <button class="big" id="waehlen">📷 Fotos auswählen</button>
-      <input type="file" id="dateien" accept="image/*" multiple hidden>
+      <button class="big" id="waehlen">📷 Fotos oder Videos auswählen</button>
+      <input type="file" id="dateien" accept="image/*,video/*" multiple hidden>
       <div id="fortschritt" class="hidden">
         <div class="bar"><div id="balken"></div></div>
         <div class="status" id="status"></div>
         <ul id="fehlerliste"></ul>
         <button class="big hidden" id="nochmal" style="margin-top:10px;background:#34486A;color:#fff">Fehlgeschlagene erneut senden</button>
       </div>
-      <p class="hint">Während des Sendens den Bildschirm des Handys eingeschaltet lassen. Mehrere Fotos auf einmal auswählen ist möglich.</p>
+      <p class="hint">Während des Sendens den Bildschirm des Handys eingeschaltet lassen. Mehrere Dateien auf einmal auswählen ist möglich; Videos brauchen je nach Größe etwas länger.</p>
     </div>
 
     <div class="card">
@@ -91,8 +91,9 @@
   var bar = document.getElementById("balken");
   var statusLine = document.getElementById("status");
   var errorList = document.getElementById("fehlerliste");
-  var IMAGE = /\.(jpe?g|png|heic|heif|webp|gif|bmp)$/i;
-  var EXT = { "image/jpeg": ".jpg", "image/png": ".png", "image/heic": ".heic", "image/heif": ".heif", "image/webp": ".webp", "image/gif": ".gif" };
+  var IMAGE = /\.(jpe?g|png|heic|heif|webp|gif|bmp|mp4|m4v|mov|mkv|avi|webm|3gp)$/i;
+  var EXT = { "image/jpeg": ".jpg", "image/png": ".png", "image/heic": ".heic", "image/heif": ".heif", "image/webp": ".webp", "image/gif": ".gif",
+    "video/mp4": ".mp4", "video/quicktime": ".mov", "video/x-matroska": ".mkv", "video/x-msvideo": ".avi", "video/avi": ".avi", "video/webm": ".webm", "video/3gpp": ".3gp" };
 
   var queue = [], failed = [], busy = false, sentTotal = 0, batchDone = 0, batchSize = 0;
 
@@ -159,7 +160,7 @@
 
   function fileName(file) {
     var n = file.name || "foto";
-    if (!IMAGE.test(n)) n = n.replace(/\.[^.]*$/, "") + (EXT[file.type] || ".jpg");
+    if (!IMAGE.test(n)) n = n.replace(/\.[^.]*$/, "") + (EXT[file.type] || (/^video\//.test(file.type) ? ".mp4" : ".jpg"));
     return n;
   }
 
@@ -169,7 +170,7 @@
         "&sender=" + encodeURIComponent(sender()) + "&name=" + encodeURIComponent(fileName(file)));
       var x = new XMLHttpRequest();
       x.open("PUT", url);
-      x.timeout = 10 * 60 * 1000;
+      x.timeout = 3 * 60 * 60 * 1000;
       x.upload.onprogress = function (e) {
         if (e.lengthComputable && batchSize > 0) {
           bar.style.width = (100 * (batchDone + e.loaded / e.total) / batchSize).toFixed(1) + "%";
@@ -199,7 +200,7 @@
         statusLine.textContent = (batchSize - failed.length) + " von " + batchSize + " gesendet, " + failed.length + " fehlgeschlagen.";
       } else {
         statusLine.className = "status ok";
-        statusLine.textContent = "✓ " + batchSize + (batchSize === 1 ? " Foto" : " Fotos") + " am Beamer. Insgesamt gesendet: " + sentTotal + ".";
+        statusLine.textContent = "✓ " + batchSize + (batchSize === 1 ? " Datei" : " Dateien") + " am Beamer. Insgesamt gesendet: " + sentTotal + ".";
       }
     }
     retryButton.classList.toggle("hidden", busy || failed.length === 0);

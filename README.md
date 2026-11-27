@@ -18,7 +18,8 @@ Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen. Die Upload
 | Taste | Wirkung |
 |---|---|
 | ◀ ▶ | voriges / nächstes Foto |
-| OK | Pause / weiter |
+| OK | Pause / weiter (auch bei Videos) |
+| ⏪ ⏩ | bei Videos 10 Sekunden zurück / vor |
 | ▲ | Menü: Pause, Drehen, Zoom (stufenlos bis 6×), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
 | ▼ | Bildleiste: zu einem beliebigen Foto springen |
 | Zurück | Menü schließen bzw. Diashow beenden |
@@ -28,6 +29,10 @@ Zoom: ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben 
 ## Fotos ordnen
 
 Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos); mit **Name ändern** lässt sich ein Absender umbenennen oder mit einem anderen zusammenfassen. **Auswählen** → Fotos mit OK markieren → **Löschen** oder **Verschieben** (in ein anderes oder neues Album). Außerdem: **Umbenennen** und **Album löschen**.
+
+## Videos
+
+MP4, MOV, MKV und AVI (auch WEBM, 3GP) lassen sich wie Fotos senden (bis 8 GB je Datei) oder vom Beamer und USB-Stick zeigen. In der Diashow läuft jedes Video bis zum Ende mit Ton. Ob ein Video abspielbar ist, hängt von den Decodern des Beamers ab (übliche Handy-Videos in H.264/H.265 gehen); nicht abspielbare werden mit einem Hinweis übersprungen.
 
 ## Fotos vom Beamer und vom USB-Stick
 

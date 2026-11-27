@@ -81,6 +81,7 @@ class MediaLibrary(private val context: Context, scope: CoroutineScope) {
         if (observing) return
         observing = runCatching {
             context.contentResolver.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, observer)
+            context.contentResolver.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, observer)
         }.isSuccess
     }
 
@@ -93,7 +94,7 @@ class MediaLibrary(private val context: Context, scope: CoroutineScope) {
         )
         val byFolder = HashMap<File, MutableList<Photo>>()
         // „external“ umfasst alle eingebauten und eingesteckten Speicher.
-        context.contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, null, null, null)?.use { c ->
+        for (uri in listOf(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)) context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
             val iData = c.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
             val iTaken = c.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN)
             val iModified = c.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
@@ -101,7 +102,7 @@ class MediaLibrary(private val context: Context, scope: CoroutineScope) {
                 val path = c.getString(iData) ?: continue
                 if ("/Android/data/" in path) continue
                 val file = File(path)
-                if (!Names.isImage(file.name)) continue
+                if (!Names.isMedia(file.name)) continue
                 val dir = file.parentFile ?: continue
                 val modified = if (iModified >= 0) c.getLong(iModified) * 1000 else 0L
                 val taken = if (iTaken >= 0) c.getLong(iTaken) else 0L

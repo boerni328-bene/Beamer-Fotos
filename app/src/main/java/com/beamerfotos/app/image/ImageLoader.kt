@@ -4,9 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.media.MediaMetadataRetriever
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.beamerfotos.app.data.Names
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -67,7 +69,31 @@ object ImageLoader {
     }
 
     /** Verkleinert ganzzahlig, so dass das Bild mindestens die Zielgröße behält (Seitenverhältnis bleibt). */
-    private fun decode(f: File, longSide: Int, shortSide: Int, software: Boolean): Bitmap? = try {
+    private fun decode(f: File, longSide: Int, shortSide: Int, software: Boolean): Bitmap? =
+        if (Names.isVideo(f.name)) videoFrame(f, longSide) else decodeImage(f, longSide, shortSide, software)
+
+    /** Ein Bild aus dem Video (nach einer Sekunde) als Vorschau. */
+    private fun videoFrame(f: File, longSide: Int): Bitmap? = try {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(f.absolutePath)
+            val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: longSide
+            val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: longSide
+            val scale = min(1f, longSide.toFloat() / max(w, h).coerceAtLeast(1))
+            retriever.getScaledFrameAtTime(
+                1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                (w * scale).toInt().coerceAtLeast(1), (h * scale).toInt().coerceAtLeast(1),
+            ) ?: retriever.frameAtTime
+        } finally {
+            retriever.release()
+        }
+    } catch (e: Exception) {
+        null
+    } catch (e: OutOfMemoryError) {
+        null
+    }
+
+    private fun decodeImage(f: File, longSide: Int, shortSide: Int, software: Boolean): Bitmap? = try {
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(f)) { decoder, info, _ ->
             val w = info.size.width
             val h = info.size.height
