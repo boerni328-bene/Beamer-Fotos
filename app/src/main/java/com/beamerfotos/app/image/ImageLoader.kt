@@ -7,8 +7,10 @@ import android.graphics.ImageDecoder
 import android.media.MediaMetadataRetriever
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.beamerfotos.app.data.Names
+import com.beamerfotos.app.data.Picture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -60,6 +62,22 @@ object ImageLoader {
             val k = key(f)
             fulls.get(k) ?: decode(f, max(screenWidth, screenHeight), min(screenWidth, screenHeight), software = false)
                 ?.asImageBitmap()?.also { fulls.put(k, it) }
+        }
+    }
+
+    private val levelCache = LruCache<String, Pair<Float, Float>>(500)
+
+    /** Dunkelster und hellster Wert des Fotos für „Automatisch verbessern“ (aus dem Vorschaubild). */
+    suspend fun levels(f: File): Pair<Float, Float>? {
+        val k = key(f)
+        levelCache.get(k)?.let { return it }
+        val bitmap = thumb(f)?.asAndroidBitmap() ?: return null
+        return withContext(Dispatchers.Default) {
+            runCatching {
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                Picture.levels(pixels)
+            }.getOrNull()?.also { levelCache.put(k, it) }
         }
     }
 

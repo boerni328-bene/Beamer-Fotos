@@ -41,6 +41,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,6 +54,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TileMode
@@ -77,6 +80,7 @@ import com.beamerfotos.app.data.Album
 import com.beamerfotos.app.data.Background
 import com.beamerfotos.app.data.Fit
 import com.beamerfotos.app.data.Photo
+import com.beamerfotos.app.data.Picture
 import com.beamerfotos.app.data.Transition
 import com.beamerfotos.app.data.cycle
 import com.beamerfotos.app.data.intervalLabel
@@ -93,7 +97,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import java.util.Locale
 
-private enum class Overlay { NONE, MENU, STRIP }
+private enum class Overlay { NONE, MENU, STRIP, PICTURE }
 
 private const val TRANSITION_MS = 900
 private const val MAX_ZOOM = 6f
@@ -152,6 +156,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     var pendingNew by remember { mutableIntStateOf(0) }
     val rootFocus = remember { FocusRequester() }
     val videoControl = remember { VideoControl() }
+    val levels = remember { mutableStateMapOf<String, Pair<Float, Float>>() }
     var videoError by remember { mutableStateOf<String?>(null) }
 
     fun endZoom() {
@@ -403,18 +408,29 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
             }
         }
 
+        // Bildverbesserung: Farbmatrix je Foto (Videos bleiben unverändert).
+        fun filterFor(photo: Photo?): ColorFilter? {
+            if (photo == null || photo.isVideo || Picture.isNeutral(settings)) return null
+            return ColorFilter.colorMatrix(ColorMatrix(Picture.matrix(settings, levels[photo.key])))
+        }
+        LaunchedEffect(current?.key, settings.autoEnhance) {
+            if (settings.autoEnhance && current != null && !current.isVideo && current.key !in levels) {
+                ImageLoader.levels(current.file)?.let { levels[current.key] = it }
+            }
+        }
+
         Canvas(Modifier.fillMaxSize()) {
             if (showPrevious && previousImage != null) {
                 drawPhoto(
                     previousImage, rotPrevious, settings.fit, alphaPrevious, slidePrevious,
-                    kbZoom(previousKb), kbPan(previous, previousKb),
+                    kbZoom(previousKb), kbPan(previous, previousKb), filterFor(previous),
                 )
             }
             if (currentImage != null) {
                 val kb = kenBurns.value
                 val z = if (zoomMode) zoom else if (current?.isVideo == true) 1f else kbZoom(kb)
                 val o = if (zoomMode) pan else if (current?.isVideo == true) Offset.Zero else kbPan(current, kb)
-                drawPhoto(currentImage, rotCurrent, settings.fit, alphaCurrent, slideCurrent, z, o)
+                drawPhoto(currentImage, rotCurrent, settings.fit, alphaCurrent, slideCurrent, z, o, filterFor(current))
             }
         }
 
@@ -499,6 +515,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                 canDelete = current?.readOnly == false,
                 onTogglePause = { togglePause() },
                 onRotate = { current?.let { graph.settings.rotate(it.key) } },
+                onPicture = { panel = Overlay.PICTURE },
                 onZoom = {
                     zoomMode = true
                     panMode = false
@@ -519,6 +536,10 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                     if (i != index) goTo(i, if (i > index) 1 else -1)
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
+            )
+            Overlay.PICTURE -> PicturePanel(
+                graph = graph,
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC0F1826)),
             )
             Overlay.NONE -> Unit
         }
@@ -566,6 +587,7 @@ private fun DrawScope.drawPhoto(
     slide: Float,
     zoom: Float,
     pan: Offset,
+    colorFilter: ColorFilter? = null,
 ) {
     if (alpha <= 0f) return
     val rotated = rotation % 180 != 0
@@ -589,6 +611,7 @@ private fun DrawScope.drawPhoto(
                 dstSize = IntSize(dw, dh),
                 alpha = alpha.coerceIn(0f, 1f),
                 filterQuality = FilterQuality.High,
+                colorFilter = colorFilter,
             )
         }
     }
@@ -624,6 +647,7 @@ private fun MenuPanel(
     canDelete: Boolean,
     onTogglePause: () -> Unit,
     onRotate: () -> Unit,
+    onPicture: () -> Unit,
     onZoom: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -655,6 +679,7 @@ private fun MenuPanel(
             TvButton("Dauer: ${intervalLabel(s.intervalSec)}", onClick = {
                 graph.settings.update { it.copy(intervalSec = nextInterval(it.intervalSec)) }
             })
+            TvButton("Bild", onClick = onPicture)
             TvButton("Übergang: ${s.transition.label}", onClick = {
                 graph.settings.update { it.copy(transition = it.transition.cycle()) }
             })

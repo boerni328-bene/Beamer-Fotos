@@ -20,7 +20,7 @@ Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen. Die Upload
 | ◀ ▶ | voriges / nächstes Foto |
 | OK | Pause / weiter (auch bei Videos) |
 | ⏪ ⏩ | bei Videos 10 Sekunden zurück / vor |
-| ▲ | Menü: Pause, Drehen, Zoom (stufenlos bis 6×), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
+| ▲ | Menü: Pause, Drehen, Zoom (stufenlos bis 6×), Bild (Helligkeit, Kontrast, Farbe, Wärme, automatisch), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
 | ▼ | Bildleiste: zu einem beliebigen Foto springen |
 | Zurück | Menü schließen bzw. Diashow beenden |
 

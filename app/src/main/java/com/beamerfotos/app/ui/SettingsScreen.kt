@@ -106,6 +106,8 @@ fun SettingsScreen(graph: AppGraph) {
                 }
             }
 
+            item { Section("Bild (gilt für alle Fotos)") }
+            item { PicturePanel(graph, requestFocus = false) }
             item { Section("Speicher und Zugang") }
             item {
                 SettingRow("Neue Fotos speichern auf", "${current.label} · ${formatBytes(current.free())} frei") {

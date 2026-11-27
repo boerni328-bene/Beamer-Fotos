@@ -30,6 +30,12 @@ data class SlideSettings(
     val liveNew: Boolean = true,
     val showQr: Boolean = false,
     val storageId: String = LOCATION_INTERNAL,
+    // Bildverbesserung (gilt für alle Fotos, nicht für Videos)
+    val brightness: Int = 0,
+    val contrast: Int = 0,
+    val saturation: Int = 0,
+    val warmth: Int = 0,
+    val autoEnhance: Boolean = false,
 )
 
 const val LOCATION_INTERNAL = "intern"
@@ -85,6 +91,11 @@ class SettingsStore(context: Context) {
             .putBoolean("neue_sofort", n.liveNew)
             .putBoolean("qr_in_diashow", n.showQr)
             .putString("speicherort", n.storageId)
+            .putInt("helligkeit", n.brightness)
+            .putInt("kontrast", n.contrast)
+            .putInt("saettigung", n.saturation)
+            .putInt("waerme", n.warmth)
+            .putBoolean("auto_verbessern", n.autoEnhance)
             .apply()
     }
 
@@ -138,6 +149,11 @@ class SettingsStore(context: Context) {
             liveNew = prefs.getBoolean("neue_sofort", d.liveNew),
             showQr = prefs.getBoolean("qr_in_diashow", d.showQr),
             storageId = prefs.getString("speicherort", null) ?: d.storageId,
+            brightness = prefs.getInt("helligkeit", 0).coerceIn(Picture.BRIGHTNESS),
+            contrast = prefs.getInt("kontrast", 0).coerceIn(Picture.CONTRAST),
+            saturation = prefs.getInt("saettigung", 0).coerceIn(Picture.SATURATION),
+            warmth = prefs.getInt("waerme", 0).coerceIn(Picture.WARMTH),
+            autoEnhance = prefs.getBoolean("auto_verbessern", false),
         )
     }
 

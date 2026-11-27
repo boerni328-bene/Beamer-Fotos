@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.5.0] – 2026-11-27 (versionCode 6)
+
+### Neu
+- **Bild verbessern:** In der Diashow ▲ → „Bild“ (oder Einstellungen → Bild): Helligkeit, Kontrast, Farbsättigung und Farbwärme mit ◀ ▶ einstellen, die Wirkung ist sofort zu sehen. „Automatisch verbessern“ gleicht flaue, zu dunkle oder zu helle Fotos einzeln aus (Tonwertkorrektur und etwas mehr Farbe). „Zurücksetzen“ stellt alles auf neutral. Gilt für alle Fotos; die Dateien selbst bleiben unverändert, Videos werden nicht verändert.
+
 ## [0.4.0] – 2026-11-27 (versionCode 5)
 
 ### Neu
