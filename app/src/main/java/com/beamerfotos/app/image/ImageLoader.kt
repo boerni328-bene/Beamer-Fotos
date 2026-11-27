@@ -28,7 +28,8 @@ object ImageLoader {
     private val thumbs = object : LruCache<String, ImageBitmap>(48 * 1024) {
         override fun sizeOf(key: String, value: ImageBitmap) = max(1, value.width * value.height * 4 / 1024)
     }
-    private val fulls = LruCache<String, ImageBitmap>(5)
+    // Bis zu zwei Collagen (je 4 Fotos) plus Vorabladen.
+    private val fulls = LruCache<String, ImageBitmap>(10)
     private val thumbLimit = Semaphore(3)
     private val fullLimit = Semaphore(2)
 
@@ -92,6 +93,26 @@ object ImageLoader {
         source
     } catch (e: OutOfMemoryError) {
         source
+    }
+
+    private val portraits = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    /** Hochformat (nach EXIF-Drehung)? Liest nur den Dateikopf, Ergebnis wird gemerkt. */
+    fun isPortrait(f: File): Boolean = portraits.getOrPut(key(f)) {
+        try {
+            val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(f.absolutePath, o)
+            val turned = runCatching {
+                android.media.ExifInterface(f.absolutePath).getAttributeInt(
+                    android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL,
+                ) in 5..8
+            }.getOrDefault(false)
+            val w = if (turned) o.outHeight else o.outWidth
+            val h = if (turned) o.outWidth else o.outHeight
+            w in 1 until h
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun forget(f: File) {

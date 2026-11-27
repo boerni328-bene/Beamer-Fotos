@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
+import com.beamerfotos.app.data.Timeline
 import com.beamerfotos.app.data.Album
 import com.beamerfotos.app.server.Network
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onDevice: () -> Unit,
     onMusic: () -> Unit,
+    onTimeline: () -> Unit,
 ) {
     val albums by graph.store.albums.collectAsState()
     val settings by graph.settings.state.collectAsState()
@@ -94,6 +96,8 @@ fun HomeScreen(
     val musicLabel = musicState.current?.let { "♪ " + it.title.take(22) } ?: "Musik"
     val lastShow by graph.settings.lastShow.collectAsState()
     val favorites by graph.settings.favorites.collectAsState()
+    val allPhotos = rememberAllPhotos(graph)
+    val today = remember(allPhotos) { todayPhotos(allPhotos) }
 
     Box(Modifier.fillMaxSize().background(Navy)) {
         Row(Modifier.fillMaxSize().padding(32.dp)) {
@@ -155,6 +159,15 @@ fun HomeScreen(
                         TvButton("★ Favoriten (${favorites.size})", onClick = { onPlay(FAVORITES, null, null) })
                         Spacer(Modifier.width(16.dp))
                     }
+                    if (today.isNotEmpty()) {
+                        TvButton(
+                            Timeline.todayLabel(today.mapNotNull { Timeline.yearsAgo(it.captured) }, today.size),
+                            onClick = { onPlay(Timeline.TODAY, null, null) },
+                        )
+                        Spacer(Modifier.width(16.dp))
+                    }
+                    TvButton("Zeitleiste", onClick = onTimeline)
+                    Spacer(Modifier.width(16.dp))
                     TvButton("Gerät & USB", onClick = onDevice)
                     Spacer(Modifier.width(16.dp))
                     TvButton(musicLabel, onClick = onMusic)

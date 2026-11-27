@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -79,6 +81,9 @@ import com.beamerfotos.app.AppGraph
 import com.beamerfotos.app.data.Album
 import com.beamerfotos.app.data.Background
 import com.beamerfotos.app.data.Fit
+import com.beamerfotos.app.data.Layout
+import com.beamerfotos.app.data.Layouts
+import com.beamerfotos.app.data.Timeline
 import com.beamerfotos.app.data.Photo
 import com.beamerfotos.app.data.Picture
 import com.beamerfotos.app.data.Transition
@@ -92,7 +97,9 @@ import com.beamerfotos.app.image.ImageLoader
 import com.beamerfotos.app.server.RemoteCommand
 import com.beamerfotos.app.music.switchStation
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlin.math.exp
 import kotlin.math.max
@@ -144,6 +151,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     fun source(own: List<Album>, media: List<Album>): List<Photo> = when {
         albumKey == null -> own.flatMap { it.photos }
         albumKey == FAVORITES -> (own + media).flatMap { it.photos }.filter { it.key in favorites }.distinctBy { it.key }
+        Timeline.isTimelineKey(albumKey) ->
+            (own + media).flatMap { it.photos }.filter { Timeline.matches(albumKey, it.captured) }.distinctBy { it.key }
         albumKey.startsWith("media:") -> media.filter { it.location.id == albumKey }.flatMap { it.photos }
         else -> (own + media).filter { it.key == albumKey }.flatMap { it.photos }
     }.filter { (sender == null || it.sender == sender) && it.key !in hidden }
@@ -155,6 +164,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     val firstKey = startKey ?: graph.settings.resumeKey(showId)
     var index by remember { mutableIntStateOf(photos.indexOfFirst { it.key == firstKey }.coerceAtLeast(0)) }
     var previous by remember { mutableStateOf<Photo?>(null) }
+    // Bei Paaren und Collagen: alle Fotos des vorigen Bildes (das erste ist [previous]).
+    var previousGroup by remember { mutableStateOf<List<Photo>>(emptyList()) }
     var previousKb by remember { mutableFloatStateOf(0f) }
     var direction by remember { mutableIntStateOf(1) }
     val transition = remember { Animatable(1f) }
@@ -182,9 +193,20 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         pan = Offset.Zero
     }
 
+    fun isVideoAt(i: Int) = photos.getOrNull(i)?.isVideo == true
+    fun isPortraitAt(i: Int): Boolean {
+        val p = photos.getOrNull(i) ?: return false
+        val portrait = ImageLoader.isPortrait(p.file)
+        return if ((rotations[p.key] ?: 0) % 180 != 0) !portrait else portrait
+    }
+    /** Anzahl Fotos im Bild ab [i] (1, bei Paaren und Collagen mehr). */
+    fun groupAt(i: Int) = Layouts.groupSize(i, photos.size, settings.layout, ::isVideoAt, ::isPortraitAt)
+    fun groupFrom(i: Int) = if (i in photos.indices) photos.subList(i, (i + groupAt(i)).coerceAtMost(photos.size)).toList() else emptyList()
+
     fun goTo(target: Int, dir: Int) {
         if (photos.isEmpty()) return
         val newIndex = target.mod(photos.size)
+        previousGroup = groupFrom(index)
         previous = photos.getOrNull(index)
         previousKb = kenBurns.value
         index = newIndex
@@ -201,16 +223,16 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     fun next(manual: Boolean) {
         when {
             photos.isEmpty() -> Unit
-            index < photos.size - 1 -> goTo(index + 1, 1)
+            index + groupAt(index) < photos.size -> goTo(index + groupAt(index), 1)
             settings.loop || manual -> goTo(0, 1)
             else -> paused = true
         }
     }
 
-    fun prev() = goTo(index - 1, -1)
+    fun prev() = goTo(Layouts.previousStart(index, photos.size, settings.layout, ::isVideoAt, ::isPortraitAt), -1)
 
     fun togglePause() {
-        if (paused && !settings.loop && index == photos.size - 1) {
+        if (paused && !settings.loop && index + groupAt(index) >= photos.size) {
             paused = false
             goTo(0, 1)
         } else {
@@ -261,6 +283,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         val title = when {
             albumKey == null -> "Alle Fotos"
             albumKey == FAVORITES -> "Favoriten"
+            Timeline.isTimelineKey(albumKey) -> Timeline.title(albumKey)
             albumKey.startsWith("media:") -> mediaAlbums.firstOrNull { it.location.id == albumKey }?.location?.label ?: "Gerät"
             else -> (albums + mediaAlbums).firstOrNull { it.key == albumKey }?.name ?: photo.album
         } + (sender?.let { " · ${senderLabel(it)}" } ?: "")
@@ -268,10 +291,12 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     }
 
     // Weiterschalten nach der Anzeigedauer (nicht bei Pause, offenem Menü oder Vergrößerung).
-    LaunchedEffect(photos.getOrNull(index)?.key, paused, settings.intervalSec, panel, zoomMode) {
+    LaunchedEffect(photos.getOrNull(index)?.key, paused, settings.intervalSec, panel, zoomMode, settings.layout) {
         val isVideo = photos.getOrNull(index)?.isVideo == true
         if (!paused && settings.intervalSec > 0 && panel == Overlay.NONE && !zoomMode && photos.size > 1 && !isVideo) {
-            delay(settings.intervalSec * 1000L + TRANSITION_MS)
+            // Bilder mit mehreren Fotos etwas länger zeigen.
+            val factor = if (groupAt(index) > 1) 1.5f else 1f
+            delay((settings.intervalSec * 1000L * factor).toLong() + TRANSITION_MS)
             next(manual = false)
         }
     }
@@ -320,6 +345,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     }
 
     val current = photos.getOrNull(index)
+    val currentGroup = groupFrom(index)
 
     BoxWithConstraints(
         Modifier
@@ -392,12 +418,20 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         val sharpness = settings.sharpness
         val currentImage = rememberFull(current, widthPx, heightPx, auto, sharpness)
         val previousImage = rememberFull(previous, widthPx, heightPx, auto, sharpness)
+        // Weitere Fotos bei Paaren und Collagen.
+        val groupImages = listOf(currentImage) + currentGroup.drop(1).map { key(it.key) { rememberFull(it, widthPx, heightPx, auto, sharpness) } }
+        val previousGroupImages = listOf(previousImage) + previousGroup.drop(1).map { key(it.key) { rememberFull(it, widthPx, heightPx, auto, sharpness) } }
 
-        // Nächstes Foto schon vorab laden (und verbessern).
-        LaunchedEffect(index, photos.size, auto, sharpness) {
-            photos.getOrNull((index + 1).mod(max(1, photos.size)))?.let {
-                ImageLoader.full(it.file, widthPx, heightPx, auto, sharpness)
+        // Nächstes Bild schon vorab laden (und verbessern).
+        LaunchedEffect(index, photos.size, auto, sharpness, settings.layout) {
+            if (photos.isEmpty()) return@LaunchedEffect
+            val nextStart = (index + groupAt(index)).mod(photos.size)
+            if (settings.layout != Layout.SINGLE) {
+                withContext(Dispatchers.IO) {
+                    for (i in nextStart until minOf(photos.size, nextStart + Layouts.COLLAGE_SIZE)) ImageLoader.isPortrait(photos[i].file)
+                }
             }
+            groupFrom(nextStart).forEach { ImageLoader.full(it.file, widthPx, heightPx, auto, sharpness) }
         }
 
         val p = transition.value
@@ -419,7 +453,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         val rotPrevious = previous?.let { rotations[it.key] } ?: 0
 
         // Unscharfer Hintergrund hinter Hochformat-Fotos (ab Android 12, sonst abgedunkelt).
-        if (settings.fit == Fit.FIT && settings.background == Background.BLUR) {
+        if (settings.fit == Fit.FIT && settings.background == Background.BLUR && currentGroup.size <= 1) {
             Canvas(
                 Modifier
                     .fillMaxSize()
@@ -444,14 +478,30 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
             return ColorFilter.colorMatrix(ColorMatrix(Picture.matrix(settings)))
         }
 
+        // Paar oder Collage: jedes Foto in seinem Feld.
+        fun DrawScope.drawGroup(images: List<ImageBitmap?>, group: List<Photo>, alpha: Float, slide: Float) {
+            val cells = Layouts.cells(group.size, size.width / size.height)
+            val fit = if (settings.layout == Layout.PAIRS) settings.fit else Fit.FILL
+            group.forEachIndexed { i, photo ->
+                val image = images.getOrNull(i) ?: return@forEachIndexed
+                val c = cells.getOrNull(i) ?: return@forEachIndexed
+                val area = Rect(c.x * size.width, c.y * size.height, (c.x + c.w) * size.width, (c.y + c.h) * size.height)
+                drawPhoto(image, rotations[photo.key] ?: 0, fit, alpha, slide, 1f, Offset.Zero, filterFor(photo), area)
+            }
+        }
+
         Canvas(Modifier.fillMaxSize()) {
-            if (showPrevious && previousImage != null) {
+            if (showPrevious && previousImage != null && previousGroup.size > 1) {
+                drawGroup(previousGroupImages, previousGroup, alphaPrevious, slidePrevious)
+            } else if (showPrevious && previousImage != null) {
                 drawPhoto(
                     previousImage, rotPrevious, settings.fit, alphaPrevious, slidePrevious,
                     kbZoom(previousKb), kbPan(previous, previousKb), filterFor(previous),
                 )
             }
-            if (currentImage != null) {
+            if (currentImage != null && currentGroup.size > 1) {
+                drawGroup(groupImages, currentGroup, alphaCurrent, slideCurrent)
+            } else if (currentImage != null) {
                 val kb = kenBurns.value
                 val z = if (zoomMode) zoom else if (current?.isVideo == true) 1f else kbZoom(kb)
                 val o = if (zoomMode) pan else if (current?.isVideo == true) Offset.Zero else kbPan(current, kb)
@@ -505,7 +555,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                     color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = shadowText,
                 )
                 Text(
-                    formatDate(current.captured) + "   ·   ${index + 1} / ${photos.size}",
+                    formatDate(current.captured) + todayNote(albumKey, current.captured) +
+                        "   ·   " + (if (currentGroup.size > 1) "${index + 1}–${index + currentGroup.size}" else "${index + 1}") + " / ${photos.size}",
                     color = Color.White, fontSize = 16.sp, style = shadowText,
                 )
             }
@@ -542,7 +593,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
             Overlay.MENU -> MenuPanel(
                 graph = graph,
                 paused = paused,
-                hasPhoto = current != null && !current.isVideo,
+                hasPhoto = current != null && !current.isVideo && currentGroup.size <= 1,
                 canDelete = current?.readOnly == false,
                 onTogglePause = { togglePause() },
                 onRotate = { current?.let { graph.settings.rotate(it.key) } },
@@ -625,19 +676,40 @@ private fun DrawScope.drawPhoto(
     zoom: Float,
     pan: Offset,
     colorFilter: ColorFilter? = null,
+    /** Feld für Paare und Collagen; ohne Angabe die ganze Fläche. */
+    area: Rect? = null,
 ) {
     if (alpha <= 0f) return
+    val a = area ?: Rect(Offset.Zero, size)
     val rotated = rotation % 180 != 0
     val iw = image.width.toFloat()
     val ih = image.height.toFloat()
     val rw = if (rotated) ih else iw
     val rh = if (rotated) iw else ih
-    val base = if (fit == Fit.FIT) min(size.width / rw, size.height / rh) else max(size.width / rw, size.height / rh)
+    val base = if (fit == Fit.FIT) min(a.width / rw, a.height / rh) else max(a.width / rw, a.height / rh)
     val scale = base * zoom
     val dw = (iw * scale).roundToInt()
     val dh = (ih * scale).roundToInt()
-    val cx = size.width / 2f + slide * size.width + pan.x * size.width
-    val cy = size.height / 2f + pan.y * size.height
+    val shift = slide * size.width
+    val cx = a.center.x + shift + pan.x * a.width
+    val cy = a.center.y + pan.y * a.height
+    if (area != null) {
+        clipRect(a.left + shift, a.top, a.right + shift, a.bottom) { drawPhotoAt(image, rotation, cx, cy, dw, dh, alpha, colorFilter) }
+    } else {
+        drawPhotoAt(image, rotation, cx, cy, dw, dh, alpha, colorFilter)
+    }
+}
+
+/** Bei „Heute vor x Jahren“: Abstand zum Aufnahmetag. */
+private fun todayNote(albumKey: String?, captured: Long): String {
+    if (albumKey != Timeline.TODAY) return ""
+    val years = Timeline.yearsAgo(captured) ?: return ""
+    return "  ·  vor $years " + if (years == 1) "Jahr" else "Jahren"
+}
+
+private fun DrawScope.drawPhotoAt(
+    image: ImageBitmap, rotation: Int, cx: Float, cy: Float, dw: Int, dh: Int, alpha: Float, colorFilter: ColorFilter?,
+) {
     translate(cx, cy) {
         rotate(rotation.toFloat(), pivot = Offset.Zero) {
             drawImage(

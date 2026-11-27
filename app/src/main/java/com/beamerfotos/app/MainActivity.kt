@@ -27,6 +27,7 @@ import com.beamerfotos.app.ui.HomeScreen
 import com.beamerfotos.app.ui.MusicScreen
 import com.beamerfotos.app.ui.SettingsScreen
 import com.beamerfotos.app.ui.SlideshowScreen
+import com.beamerfotos.app.ui.TimelineScreen
 
 class MainActivity : ComponentActivity() {
     private lateinit var graph: AppGraph
@@ -61,6 +62,7 @@ sealed interface Screen {
     data object Settings : Screen
     data object Device : Screen
     data object Music : Screen
+    data object Timeline : Screen
 }
 
 @Composable
@@ -120,6 +122,7 @@ private fun Screens(
             onSettings = { push(Screen.Settings) },
             onDevice = { push(Screen.Device) },
             onMusic = { push(Screen.Music) },
+            onTimeline = { push(Screen.Timeline) },
         )
         is Screen.AlbumView -> AlbumScreen(
             graph = graph,
@@ -136,6 +139,7 @@ private fun Screens(
         )
         Screen.Settings -> SettingsScreen(graph = graph)
         Screen.Music -> MusicScreen(graph = graph)
+        Screen.Timeline -> TimelineScreen(graph = graph, onPlay = { push(Screen.Show(it, null)) })
         Screen.Device -> DeviceScreen(
             graph = graph,
             onAlbum = { push(Screen.AlbumView(it.key)) },

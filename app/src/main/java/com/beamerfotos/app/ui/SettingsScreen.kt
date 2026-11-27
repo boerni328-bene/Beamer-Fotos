@@ -84,6 +84,11 @@ fun SettingsScreen(graph: AppGraph) {
                 }
             }
             item {
+                SettingRow("Fotos je Bild", s.layout.label) {
+                    graph.settings.update { it.copy(layout = it.layout.cycle()) }
+                }
+            }
+            item {
                 SettingRow("Reihenfolge", s.order.label) { graph.settings.update { it.copy(order = it.order.cycle()) } }
             }
             item {

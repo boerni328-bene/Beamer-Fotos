@@ -41,6 +41,8 @@ data class SlideSettings(
     val idleMinutes: Int = 0,
     val startWithShow: Boolean = false,
     val showClock: Boolean = false,
+    /** Mehrere Fotos auf einem Bild: Hochformat paarweise oder Collage. */
+    val layout: Layout = Layout.SINGLE,
 )
 
 const val LOCATION_INTERNAL = "intern"
@@ -124,6 +126,7 @@ class SettingsStore(context: Context) {
             .putInt("leerlauf_minuten", n.idleMinutes)
             .putBoolean("start_mit_diashow", n.startWithShow)
             .putBoolean("uhr", n.showClock)
+            .putString("anordnung", n.layout.name)
             .apply()
     }
 
@@ -241,6 +244,7 @@ class SettingsStore(context: Context) {
             idleMinutes = prefs.getInt("leerlauf_minuten", 0).takeIf { it in IDLE_MINUTES } ?: 0,
             startWithShow = prefs.getBoolean("start_mit_diashow", false),
             showClock = prefs.getBoolean("uhr", false),
+            layout = enumOr(prefs.getString("anordnung", null), d.layout),
         )
     }
 

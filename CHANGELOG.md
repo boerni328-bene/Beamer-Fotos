@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.9.0] – 2026-11-27 (versionCode 14)
+
+### Neu
+- **Fotos je Bild:** Einstellungen → „Fotos je Bild“: „Hochformat paarweise“ zeigt zwei aufeinanderfolgende Hochformat-Fotos nebeneinander; „Collage“ zeigt bis zu 4 Fotos zusammen (2 nebeneinander, 1 groß + 2, oder 2×2). Videos stehen weiterhin allein. Bilder mit mehreren Fotos bleiben etwas länger stehen.
+- **Zeitleiste:** Startseite → „Zeitleiste“: alle Fotos (eigene, Gerät, USB) nach Jahr und Monat des Aufnahmedatums, jeweils als Diashow.
+- **Heute vor x Jahren:** Gibt es Fotos vom heutigen Kalendertag aus früheren Jahren, erscheint auf der Startseite ein eigener Knopf; in der Diashow steht „vor x Jahren“ beim Datum.
+
 ## [0.8.2] – 2026-11-27 (versionCode 13)
 
 ### Neu
