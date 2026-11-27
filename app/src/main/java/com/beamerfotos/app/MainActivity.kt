@@ -80,7 +80,7 @@ fun App(graph: AppGraph) {
     // „Diashow starten“ auf der Handy-Seite.
     LaunchedEffect(Unit) {
         graph.server.commands.collect {
-            if (it == RemoteCommand.START && stack.last() !is Screen.Show) push(Screen.Show(null, null))
+            if (it == RemoteCommand.Start && stack.last() !is Screen.Show) push(Screen.Show(null, null))
         }
     }
 

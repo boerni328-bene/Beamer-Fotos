@@ -167,7 +167,14 @@ class PhotoStore(
     }
 
     /** Speichert ein Foto in <Album>/<Absender>/; ohne Absender direkt im Album. */
-    fun save(albumRaw: String?, senderRaw: String?, nameRaw: String?, length: Long, input: InputStream): SaveResult {
+    fun save(
+        albumRaw: String?,
+        senderRaw: String?,
+        nameRaw: String?,
+        length: Long,
+        input: InputStream,
+        exifDate: String? = null,
+    ): SaveResult {
         val name = Names.fileName(nameRaw)
             ?: return SaveResult.Error(415, "Nur Fotos (JPG, PNG, HEIC …), Videos (MP4, MOV, MKV, AVI) und Musik (MP3, M4A, FLAC …) werden angenommen.")
         val location = uploadLocation()
@@ -219,6 +226,16 @@ class PhotoStore(
         if (isMusic) {
             _musicChanged.value = System.currentTimeMillis()
             return SaveResult.Ok(target)
+        }
+        // „Schnell senden“: das Handy hat das Foto verkleinert, das Aufnahmedatum kommt getrennt mit.
+        if (exifDate != null && EXIF_DATE.matches(exifDate) && name.lowercase().let { it.endsWith(".jpg") || it.endsWith(".jpeg") }) {
+            runCatching {
+                ExifInterface(target.absolutePath).apply {
+                    setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, exifDate)
+                    setAttribute(ExifInterface.TAG_DATETIME, exifDate)
+                    saveAttributes()
+                }
+            }
         }
         _arrivals.tryEmit(Arrival(target, albumName, sender))
         requestRefresh()
@@ -500,6 +517,8 @@ class PhotoStore(
 
         /** Ordnername auf dem USB-Stick (Pictures/… und Music/…); die Gerätebibliothek blendet ihn aus. */
         const val PUBLIC_FOLDER = "Beamer-Fotos"
+
+        private val EXIF_DATE = Regex("""\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}""")
 
         /** So viel bleibt immer frei, damit der Beamer selbst nicht voll läuft. */
         private const val RESERVE_BYTES = 200L * 1024 * 1024

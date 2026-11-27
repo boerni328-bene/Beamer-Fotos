@@ -29,6 +29,16 @@
   .hint { font-size:13px; color:var(--muted); margin-top:10px; }
   .hidden { display:none; }
   #fehlerliste { font-size:13px; color:var(--red); margin:8px 0 0; padding-left:18px; }
+  .check { display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:14px; color:var(--muted); }
+  .check input { width:22px; height:22px; flex:none; margin:0; accent-color:var(--gold); }
+  .strip { display:flex; gap:6px; overflow-x:auto; padding:4px 0 8px; margin-top:10px; -webkit-overflow-scrolling:touch; }
+  .strip img { height:64px; min-width:48px; border-radius:6px; border:3px solid transparent; background:#1B2A41; cursor:pointer; }
+  .strip img.cur { border-color:var(--gold); }
+  #zoombox { position:relative; aspect-ratio:16/9; background:#000; overflow:hidden; border-radius:10px; margin-top:10px; touch-action:none; }
+  #zoombox img { position:absolute; left:0; top:0; width:100%; height:100%; object-fit:contain; transform-origin:50% 50%; pointer-events:none; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .chips button { font-size:15px; padding:10px 12px; border:0; border-radius:10px; background:#34486A; color:#fff; cursor:pointer; }
+  .chips button.cur { background:var(--gold); color:var(--navy); font-weight:700; }
 </style>
 </head>
 <body>
@@ -68,6 +78,7 @@
         <ul id="fehlerliste"></ul>
         <button class="big hidden" id="nochmal" style="margin-top:10px;background:#34486A;color:#fff">Fehlgeschlagene erneut senden</button>
       </div>
+      <label class="check"><input type="checkbox" id="schnell"><span>Schnell senden: große Fotos vor dem Senden auf 4K (3840 Pixel) verkleinern. Für den Beamer reicht das, das Original bleibt auf dem Handy. Das Aufnahmedatum wird mitgeschickt.</span></label>
       <p class="hint">Während des Sendens den Bildschirm des Handys eingeschaltet lassen. Mehrere Dateien auf einmal auswählen ist möglich; Videos brauchen je nach Größe etwas länger.</p>
     </div>
 
@@ -81,6 +92,20 @@
       <div class="row" style="margin-top:10px">
         <button data-cmd="start">▶ Diashow starten</button>
       </div>
+      <div class="status" id="showinfo" style="margin-top:10px"></div>
+      <div id="showteile" hidden>
+        <div class="strip" id="leiste" aria-label="Bildleiste: Foto antippen, um es zu zeigen"></div>
+        <div id="zoombereich">
+          <label style="margin-top:8px">Vergrößern: mit zwei Fingern aufziehen, mit einem Finger verschieben</label>
+          <div id="zoombox"><img id="zoombild" alt=""></div>
+          <div class="row" style="margin-top:8px">
+            <button id="zoomweg" aria-label="Kleiner">－</button>
+            <button id="zoomganz">Ganzes Foto</button>
+            <button id="zoomhin" aria-label="Größer">＋</button>
+          </div>
+        </div>
+        <div class="hint" id="zoomnein" hidden>Vergrößern geht nur bei einzelnen Fotos (nicht bei Videos, Paaren und Collagen).</div>
+      </div>
     </div>
 
     <div class="card">
@@ -90,6 +115,8 @@
         <button data-cmd="music" aria-label="Musik Pause oder weiter">⏯ Musik</button>
         <button data-cmd="music_next" aria-label="Nächstes Stück">⏭ Nächstes</button>
       </div>
+      <label style="margin-top:14px">Radiosender</label>
+      <div class="chips" id="sender"></div>
       <p class="hint">Musikstücke (MP3, M4A, FLAC …) oben mit „🎵 Musik“ senden; sie erscheinen am Beamer unter „Musik“.</p>
       <label for="sendername" style="margin-top:14px">Radiosender hinzufügen</label>
       <input type="text" id="sendername" maxlength="60" placeholder="Name, z. B. Lieblingssender" autocomplete="off">
@@ -191,10 +218,119 @@
     return n;
   }
 
+  // ---- Schnell senden: große Fotos auf dem Handy verkleinern (ab Werk aus) ----
+  var fastInput = document.getElementById("schnell");
+  try { fastInput.checked = localStorage.getItem("fastSend") === "1"; } catch (e) {}
+  fastInput.addEventListener("change", function () {
+    try { localStorage.setItem("fastSend", fastInput.checked ? "1" : "0"); } catch (e) {}
+  });
+  var MAX_SIDE = 3840;
+
+  function readBytes(blob) {
+    if (blob.arrayBuffer) return blob.arrayBuffer();
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = rej;
+      r.readAsArrayBuffer(blob);
+    });
+  }
+
+  // Aufnahmedatum aus den EXIF-Daten (geht beim Verkleinern verloren, wird deshalb getrennt geschickt).
+  function exifDate(file) {
+    if (file.type !== "image/jpeg") return Promise.resolve("");
+    return readBytes(file.slice(0, 262144)).then(function (buf) {
+      var v = new DataView(buf);
+      if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return "";
+      var o = 2;
+      while (o + 10 <= v.byteLength) {
+        var marker = v.getUint16(o), len = v.getUint16(o + 2);
+        if (marker === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) return tiffDate(v, o + 10);
+        if ((marker & 0xFF00) !== 0xFF00 || marker === 0xFFDA) break;
+        o += 2 + len;
+      }
+      return "";
+    }).catch(function () { return ""; });
+  }
+
+  function tiffDate(v, t) {
+    var le = v.getUint16(t) === 0x4949;
+    function u16(q) { return v.getUint16(q, le); }
+    function u32(q) { return v.getUint32(q, le); }
+    function find(ifd, tag) {
+      if (ifd + 2 > v.byteLength) return -1;
+      var n = u16(ifd);
+      for (var i = 0; i < n; i++) {
+        var e = ifd + 2 + i * 12;
+        if (e + 12 > v.byteLength) return -1;
+        if (u16(e) === tag) return e;
+      }
+      return -1;
+    }
+    function text(e) {
+      var count = u32(e + 4), q = count > 4 ? t + u32(e + 8) : e + 8, out = "";
+      for (var i = 0; i < count && q + i < v.byteLength; i++) {
+        var c = v.getUint8(q + i);
+        if (!c) break;
+        out += String.fromCharCode(c);
+      }
+      return out;
+    }
+    var ifd0 = t + u32(t + 4), date = "";
+    var exifPtr = find(ifd0, 0x8769);
+    if (exifPtr >= 0) {
+      var e = find(t + u32(exifPtr + 8), 0x9003);
+      if (e >= 0) date = text(e);
+    }
+    if (!date) {
+      var d = find(ifd0, 0x0132);
+      if (d >= 0) date = text(d);
+    }
+    return /^\d{4}:\d\d:\d\d \d\d:\d\d:\d\d$/.test(date) ? date : "";
+  }
+
+  function decodeBitmap(file) {
+    try {
+      return createImageBitmap(file, { imageOrientation: "from-image" }).catch(function () { return createImageBitmap(file); });
+    } catch (e) {
+      return createImageBitmap(file);
+    }
+  }
+
+  // Liefert, was gesendet wird: das Original oder (bei „Schnell senden“) ein auf 4K verkleinertes JPEG.
+  function prepare(file) {
+    var plain = { body: file, name: fileName(file), date: "" };
+    if (!fastInput.checked || !/^image\/(jpeg|png|webp)$/.test(file.type) || !window.createImageBitmap) return Promise.resolve(plain);
+    return exifDate(file).then(function (date) {
+      return decodeBitmap(file).then(function (bmp) {
+        var w = bmp.width, h = bmp.height, longSide = Math.max(w, h);
+        if (longSide <= MAX_SIDE) { if (bmp.close) bmp.close(); return plain; }
+        var k = MAX_SIDE / longSide, cw = Math.round(w * k), ch = Math.round(h * k);
+        var c = document.createElement("canvas");
+        c.width = cw;
+        c.height = ch;
+        var g = c.getContext("2d");
+        g.imageSmoothingEnabled = true;
+        g.imageSmoothingQuality = "high";
+        g.drawImage(bmp, 0, 0, cw, ch);
+        if (bmp.close) bmp.close();
+        return new Promise(function (res) { c.toBlob(res, "image/jpeg", 0.92); }).then(function (blob) {
+          if (!blob || blob.size >= file.size) return plain;
+          return { body: blob, name: fileName(file).replace(/\.[^.]*$/, "") + ".jpg", date: date };
+        });
+      });
+    }).catch(function () { return plain; });
+  }
+
   function uploadOne(file) {
+    return prepare(file).then(function (prepared) { return send(prepared); });
+  }
+
+  function send(prepared) {
     return new Promise(function (resolve, reject) {
       var url = api("/api/upload?album=" + encodeURIComponent(albumInput.value.trim()) +
-        "&sender=" + encodeURIComponent(sender()) + "&name=" + encodeURIComponent(fileName(file)));
+        "&sender=" + encodeURIComponent(sender()) + "&name=" + encodeURIComponent(prepared.name) +
+        (prepared.date ? "&exifdate=" + encodeURIComponent(prepared.date) : ""));
       var x = new XMLHttpRequest();
       x.open("PUT", url);
       x.timeout = 3 * 60 * 60 * 1000;
@@ -217,7 +353,7 @@
       };
       x.onerror = function () { reject(new Error("Verbindung unterbrochen")); };
       x.ontimeout = function () { reject(new Error("Zeitüberschreitung")); };
-      x.send(file);
+      x.send(prepared.body);
     });
   }
 
@@ -333,15 +469,165 @@
   picker(document.getElementById("waehlenmusik"), document.getElementById("musikdateien"));
   retryButton.addEventListener("click", function () { start(failed); });
 
+  function command(query, after) {
+    return fetch(api("/api/control?cmd=" + query), { method: "POST" }).then(function (r) {
+      if (r.status === 403) denied();
+      if (after) setTimeout(after, 400);
+    }).catch(function () {});
+  }
+
   Array.prototype.forEach.call(document.querySelectorAll("[data-cmd]"), function (b) {
     b.addEventListener("click", function () {
-      fetch(api("/api/control?cmd=" + b.getAttribute("data-cmd")), { method: "POST" }).then(function (r) {
-        if (r.status === 403) denied();
-        // Musikanzeige kurz danach auffrischen.
-        if (/^music/.test(b.getAttribute("data-cmd"))) setTimeout(checkConnection, 1200);
-      }).catch(function () {});
+      var cmd = b.getAttribute("data-cmd");
+      // Musikanzeige bzw. Diashow-Anzeige kurz danach auffrischen.
+      command(cmd, /^music/.test(cmd) ? function () { setTimeout(checkConnection, 800); } : pollShow);
     });
   });
+
+  // ---- Diashow vom Handy: Bildleiste und Vergrößern mit den Fingern ----
+  var stripBox = document.getElementById("leiste");
+  var zoomBox = document.getElementById("zoombox");
+  var zoomImg = document.getElementById("zoombild");
+  var stripFrom = -1, stripTo = -1, stripTotal = -1, shownIndex = -1;
+  var z = 1, px = 0, py = 0, zoomTimer = null;
+
+  function thumbUrl(i, total) { return api("/api/thumb?i=" + i + "&n=" + total); }
+
+  function buildStrip(s) {
+    var from = Math.max(0, s.index - 10), to = Math.min(s.total, from + 40);
+    if (s.total !== stripTotal || s.index < stripFrom + 3 && stripFrom > 0 || s.index > stripTo - 4 && stripTo < s.total || stripFrom < 0) {
+      stripBox.textContent = "";
+      for (var i = from; i < to; i++) {
+        var img = document.createElement("img");
+        img.loading = "lazy";
+        img.alt = "Foto " + (i + 1);
+        img.setAttribute("data-i", i);
+        img.src = thumbUrl(i, s.total);
+        stripBox.appendChild(img);
+      }
+      stripFrom = from;
+      stripTo = to;
+      stripTotal = s.total;
+    }
+    Array.prototype.forEach.call(stripBox.children, function (img) {
+      var i = +img.getAttribute("data-i");
+      var on = i >= s.index && i < s.index + (s.group || 1);
+      img.classList.toggle("cur", on);
+      if (on && i === s.index && shownIndex !== s.index && img.scrollIntoView) {
+        img.scrollIntoView({ block: "nearest", inline: "center" });
+      }
+    });
+  }
+
+  stripBox.addEventListener("click", function (e) {
+    var i = e.target && e.target.getAttribute && e.target.getAttribute("data-i");
+    if (i !== null && i !== undefined) command("goto&i=" + i, pollShow);
+  });
+
+  function applyZoom() {
+    zoomImg.style.transform = "translate(" + (px * 100).toFixed(2) + "%," + (py * 100).toFixed(2) + "%) scale(" + z.toFixed(3) + ")";
+  }
+  function clampPan() {
+    var limit = (z - 1) / 2;
+    px = Math.max(-limit, Math.min(limit, px));
+    py = Math.max(-limit, Math.min(limit, py));
+  }
+  function sendZoom() {
+    if (zoomTimer) return;
+    zoomTimer = setTimeout(function () {
+      zoomTimer = null;
+      command("zoom&z=" + z.toFixed(3) + "&x=" + px.toFixed(4) + "&y=" + py.toFixed(4));
+    }, 120);
+  }
+  function setZoom(nz) {
+    z = Math.max(1, Math.min(6, nz));
+    if (z < 1.03) { z = 1; px = 0; py = 0; }
+    clampPan();
+    applyZoom();
+    sendZoom();
+  }
+
+  var startDist = 0, startZ = 1, startX = 0, startY = 0, startPx = 0, startPy = 0;
+  function dist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+  zoomBox.addEventListener("touchstart", function (e) {
+    if (e.touches.length >= 2) { startDist = dist(e.touches); startZ = z; }
+    else if (e.touches.length === 1) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; startPx = px; startPy = py; }
+    e.preventDefault();
+  }, { passive: false });
+  zoomBox.addEventListener("touchmove", function (e) {
+    if (e.touches.length >= 2 && startDist > 0) {
+      setZoom(startZ * dist(e.touches) / startDist);
+    } else if (e.touches.length === 1 && z > 1) {
+      px = startPx + (e.touches[0].clientX - startX) / zoomBox.clientWidth;
+      py = startPy + (e.touches[0].clientY - startY) / zoomBox.clientHeight;
+      clampPan();
+      applyZoom();
+      sendZoom();
+    }
+    e.preventDefault();
+  }, { passive: false });
+  zoomBox.addEventListener("touchend", function (e) {
+    // Nach dem Aufziehen mit dem verbliebenen Finger weiter verschieben.
+    if (e.touches.length === 1) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; startPx = px; startPy = py; startDist = 0; }
+  });
+  document.getElementById("zoomhin").addEventListener("click", function () { setZoom(z * 1.5); });
+  document.getElementById("zoomweg").addEventListener("click", function () { setZoom(z / 1.5); });
+  document.getElementById("zoomganz").addEventListener("click", function () { setZoom(1); });
+
+  function pollShow() {
+    if (document.visibilityState === "hidden") return;
+    fetch(api("/api/show"), { cache: "no-store" }).then(function (r) {
+      if (r.status === 403) { denied(); return null; }
+      return r.json();
+    }).then(function (s) {
+      if (!s) return;
+      var info = document.getElementById("showinfo");
+      var parts = document.getElementById("showteile");
+      if (!s.active || !s.total) {
+        info.textContent = s.active ? "Diashow läuft, aber ohne Fotos." : "Am Beamer läuft gerade keine Diashow.";
+        parts.hidden = true;
+        stripFrom = -1;
+        shownIndex = -1;
+        return;
+      }
+      var g = s.group || 1;
+      info.textContent = "Foto " + (s.index + 1) + (g > 1 ? "–" + (s.index + g) : "") + " von " + s.total +
+        (s.title ? " · " + s.title : "") + (s.paused ? " · Pause" : "");
+      parts.hidden = false;
+      buildStrip(s);
+      var canZoom = !s.video && g === 1;
+      document.getElementById("zoombereich").hidden = !canZoom;
+      document.getElementById("zoomnein").hidden = canZoom;
+      if (shownIndex !== s.index) {
+        shownIndex = s.index;
+        z = 1; px = 0; py = 0;
+        applyZoom();
+        if (canZoom) zoomImg.src = thumbUrl(s.index, s.total);
+      }
+    }).catch(function () {});
+  }
+
+  // ---- Radiosender wählen ----
+  function loadStations() {
+    fetch(api("/api/stations"), { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (!j) return;
+      var box = document.getElementById("sender");
+      box.textContent = "";
+      if (!j.stations.length) {
+        box.innerHTML = "<span class=\"hint\" style=\"margin:0\">Noch keine Sender gemerkt (unten hinzufügen oder am Beamer suchen).</span>";
+        return;
+      }
+      j.stations.forEach(function (name, i) {
+        var b = document.createElement("button");
+        b.textContent = (name === j.current ? "♪ " : "") + name;
+        if (name === j.current) b.className = "cur";
+        b.addEventListener("click", function () {
+          command("station&i=" + i, function () { setTimeout(function () { loadStations(); checkConnection(); }, 1500); });
+        });
+        box.appendChild(b);
+      });
+    }).catch(function () {});
+  }
 
   document.getElementById("senderdazu").addEventListener("click", function () {
     var name = document.getElementById("sendername").value.trim();
@@ -357,13 +643,18 @@
       .then(function (j) {
         out.className = j.ok ? "status ok" : "status err";
         out.textContent = j.ok ? "✓ Gespeichert. Am Beamer unter „Musik“ → Radio." : (j.error || "Fehler");
-        if (j.ok) { document.getElementById("sendername").value = ""; document.getElementById("senderurl").value = ""; }
+        if (j.ok) { document.getElementById("sendername").value = ""; document.getElementById("senderurl").value = ""; loadStations(); }
       })
       .catch(function () { out.className = "status err"; out.textContent = "Beamer nicht erreichbar."; });
   });
 
   checkConnection();
+  loadStations();
+  pollShow();
   setInterval(checkConnection, 15000);
+  setInterval(loadStations, 15000);
+  setInterval(pollShow, 2500);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { pollShow(); checkConnection(); } });
 })();
 </script>
 </body>

@@ -46,7 +46,7 @@ object ImageLoader {
         thumbLimit.withPermit {
             val k = key(f)
             thumbs.get(k) ?: run {
-                val disk = thumbDir?.let { File(it, k.hashCode().toUInt().toString(16) + "_" + f.length() + ".jpg") }
+                val disk = diskThumb(f)
                 val fromDisk = disk?.takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.absolutePath) }
                 val bitmap = fromDisk ?: decode(f, 480, 320, software = true)?.also { b ->
                     if (disk != null) runCatching { disk.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 85, it) } }
@@ -54,6 +54,19 @@ object ImageLoader {
                 bitmap?.asImageBitmap()?.also { thumbs.put(k, it) }
             }
         }
+    }
+
+    private fun diskThumb(f: File): File? =
+        thumbDir?.let { File(it, key(f).hashCode().toUInt().toString(16) + "_" + f.length() + ".jpg") }
+
+    /** Vorschaubild als JPEG (für die Handy-Seite). */
+    suspend fun thumbJpeg(f: File): ByteArray? {
+        val disk = diskThumb(f) ?: return null
+        if (!disk.exists()) {
+            thumbs.remove(key(f))
+            thumb(f)
+        }
+        return withContext(Dispatchers.IO) { runCatching { disk.readBytes() }.getOrNull() }
     }
 
     private fun fullKey(f: File, auto: Boolean, sharpness: Int) = key(f) + "|" + auto + "|" + sharpness

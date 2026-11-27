@@ -39,4 +39,7 @@ Zuerst `docs/uebergabe/uebergabe.md` lesen (einzige Übergabedatei, wird übersc
 - `ui/HomeScreen.kt` (QR-Code + Alben), `ui/AlbumScreen.kt`, `ui/SlideshowScreen.kt` (Diashow, Menü, Bildleiste), `ui/SettingsScreen.kt`, `ui/Components.kt`; `MainActivity.kt` (Seitenwahl ohne Navigationsbibliothek, Server läuft zwischen onStart und onStop).
 - `data/MediaLibrary.kt` – Fotos und Videos vom Gerät und USB (MediaStore, nur lesen); `data/Picture.kt` – Regler als Farbmatrix, `data/Enhance.kt` – automatische Verbesserung und Schärfen an den Pixeln (beide getestet).
 - `music/MusicPlayer.kt` (Musik und Radio für die ganze App), `music/RadioStore` in `Radio.kt` (Sender, Suche über radio-browser.info), `music/MusicLibrary.kt`.
-- `ui/DeviceScreen.kt`, `ui/MusicScreen.kt`, `ui/VideoPlayer.kt` (Media3), `ui/PicturePanel.kt` (Bildregler).
+- `ui/DeviceScreen.kt`, `ui/MusicScreen.kt` (auch Musik löschen/verschieben), `ui/VideoPlayer.kt` (Media3), `ui/PicturePanel.kt` (Bildregler).
+- `data/Layouts.kt` (Paare und Collagen) und `data/Timeline.kt` (Zeitleiste, „Heute vor x Jahren“), beide getestet; `ui/TimelineScreen.kt`.
+- USB-Speicher: `PhotoStore.locations()` über `StorageManager`, Ordner `Pictures/Beamer-Fotos` und `Music/Beamer-Fotos` auf dem Stick.
+- Handy-Fernbedienung: `UploadServer.show` (`ShowState`, von der Diashow gesetzt), `/api/show`, `/api/thumb`, `/api/stations`, Befehle `goto`, `zoom`, `station`.

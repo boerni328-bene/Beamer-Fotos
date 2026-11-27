@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.10.0] – 2026-11-27 (versionCode 15)
+
+### Neu
+- **Handy als Fernbedienung:** Die Handy-Seite zeigt, was am Beamer läuft (Foto x von y, Album), eine Bildleiste zum Antippen und das aktuelle Foto zum Vergrößern mit zwei Fingern (verschieben mit einem Finger, dazu Knöpfe − / Ganzes Foto / +). Radiosender lassen sich direkt antippen.
+- **Schnell senden** (ab Werk aus, Haken auf der Handy-Seite): Große Fotos (JPG, PNG, WebP) werden vor dem Senden auf 4K (3840 Pixel lange Seite, JPEG-Qualität 92) verkleinert – für den Beamer ohne sichtbaren Unterschied, deutlich schneller. Das Aufnahmedatum wird getrennt mitgeschickt und im Foto gespeichert. Kleinere Fotos und HEIC bleiben unverändert.
+
 ## [0.9.0] – 2026-11-27 (versionCode 14)
 
 ### Neu

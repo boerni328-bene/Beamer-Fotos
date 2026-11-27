@@ -95,6 +95,7 @@ import com.beamerfotos.app.data.nextInterval
 import com.beamerfotos.app.data.ordered
 import com.beamerfotos.app.image.ImageLoader
 import com.beamerfotos.app.server.RemoteCommand
+import com.beamerfotos.app.server.ShowState
 import com.beamerfotos.app.music.switchStation
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.Dispatchers
@@ -319,13 +320,47 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     LaunchedEffect(Unit) {
         graph.server.commands.collect {
             when (it) {
-                RemoteCommand.NEXT -> next(manual = true)
-                RemoteCommand.PREV -> prev()
-                RemoteCommand.TOGGLE -> togglePause()
-                RemoteCommand.START -> paused = false
+                RemoteCommand.Next -> next(manual = true)
+                RemoteCommand.Prev -> prev()
+                RemoteCommand.Toggle -> togglePause()
+                RemoteCommand.Start -> paused = false
+                is RemoteCommand.GoTo -> if (it.index in photos.indices && it.index != index) {
+                    panel = Overlay.NONE
+                    goTo(it.index, if (it.index > index) 1 else -1)
+                }
+                is RemoteCommand.ZoomTo -> {
+                    val photo = photos.getOrNull(index)
+                    if (photo != null && !photo.isVideo && groupAt(index) == 1) {
+                        if (it.zoom <= 1.02f) {
+                            endZoom()
+                        } else {
+                            panel = Overlay.NONE
+                            zoomMode = true
+                            panMode = true
+                            zoomDir = 0
+                            panDir = Offset.Zero
+                            zoom = it.zoom.coerceIn(1f, MAX_ZOOM)
+                            val limit = (zoom - 1f) / 2f
+                            pan = Offset(it.x.coerceIn(-limit, limit), it.y.coerceIn(-limit, limit))
+                        }
+                    }
+                }
             }
         }
     }
+
+    // Für die Handy-Seite: was gerade läuft (Bildleiste, Fingerzoom).
+    LaunchedEffect(index, photos.size, paused, settings.layout) {
+        val title = when {
+            albumKey == null -> "Alle Fotos"
+            albumKey == FAVORITES -> "Favoriten"
+            Timeline.isTimelineKey(albumKey) -> Timeline.title(albumKey)
+            albumKey.startsWith("media:") -> "Gerät und USB"
+            else -> photos.getOrNull(index)?.album ?: ""
+        }
+        graph.server.show.value = ShowState(photos.toList(), index, groupAt(index), paused, title)
+    }
+    DisposableEffect(Unit) { onDispose { graph.server.show.value = null } }
 
     LaunchedEffect(panel) { if (panel == Overlay.NONE) runCatching { rootFocus.requestFocus() } }
     BackHandler(enabled = panel != Overlay.NONE) { panel = Overlay.NONE }

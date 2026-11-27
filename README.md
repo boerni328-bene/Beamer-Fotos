@@ -11,7 +11,9 @@ Gebaut für den XGIMI MoGo 4 Laser, läuft auf jedem Gerät mit Google TV oder A
 3. QR-Code mit der Kamera scannen (iPhone: Kamera-App, Android: Kamera oder Google Lens).
 4. Im Browser Namen und auf Wunsch ein Album eingeben, **Fotos auswählen** – fertig. Die Fotos landen auf dem Beamer, getrennt nach Absender.
 
-Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen. Die Upload-Seite dient auch als Fernbedienung für die Diashow.
+Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen.
+
+Die Handy-Seite ist zugleich Fernbedienung: blättern, Pause, Bildleiste zum Antippen, Vergrößern mit zwei Fingern, Radiosender wählen. Mit **Schnell senden** (ab Werk aus) verkleinert das Handy große Fotos vor dem Senden auf 4K (3840 Pixel); das Aufnahmedatum bleibt erhalten.
 
 ## Diashow mit der Fernbedienung
 
@@ -26,6 +28,10 @@ Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen. Die Upload
 
 Zoom: ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben mit den Pfeiltasten (und zurück), Zurück beendet den Zoom.
 
+**Fotos je Bild** (Einstellungen): ein Foto, zwei Hochformat-Fotos nebeneinander oder Collage aus bis zu 4 Fotos.
+
+**Zeitleiste** (Startseite): alle Fotos nach Jahr und Monat der Aufnahme. Gibt es Fotos vom heutigen Tag aus früheren Jahren, erscheint auf der Startseite **Heute vor x Jahren**.
+
 ## Fotos ordnen
 
 Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos); mit **Name ändern** lässt sich ein Absender umbenennen oder mit einem anderen zusammenfassen. **Auswählen** → Fotos mit OK markieren → **Löschen** oder **Verschieben** (in ein anderes oder neues Album). Außerdem: **Umbenennen** und **Album löschen**.
@@ -36,7 +42,7 @@ MP4, MOV, MKV und AVI (auch WEBM, 3GP) lassen sich wie Fotos senden (bis 8 GB je
 
 ## Musik und Radio
 
-Startseite → **Musik**: Radiosender suchen (freies Verzeichnis radio-browser.info, nur auf Knopfdruck) und merken, eigene Musik abspielen (über die Handy-Seite gesendet oder auf Beamer und USB-Stick). Die Musik läuft mit oder ohne Diashow, solange die App geöffnet ist, und pausiert bei Videos. Auf der Handy-Seite lassen sich Sender mit Name und Stream-Adresse hinzufügen und die Musik steuern.
+Startseite → **Musik**: Radiosender suchen (freies Verzeichnis radio-browser.info, nur auf Knopfdruck) und merken, eigene Musik abspielen (über die Handy-Seite gesendet oder auf Beamer und USB-Stick). Gesendete Musik lässt sich dort löschen und zwischen Beamer und USB-Stick verschieben. Die Musik läuft mit oder ohne Diashow, solange die App geöffnet ist, und pausiert bei Videos. Auf der Handy-Seite lassen sich Sender mit Name und Stream-Adresse hinzufügen und die Musik steuern.
 
 ## Fotos vom Beamer und vom USB-Stick
 
@@ -48,7 +54,7 @@ Startseite → **Gerät & USB-Stick**: alle Fotos, die schon auf dem Beamer oder
 
 **Bilderrahmen:** Einstellungen → Bilderrahmen: Diashow startet nach einigen Minuten ohne Bedienung oder gleich beim Öffnen, auf Wunsch mit Uhrzeit.
 
-Weitere Einstellungen (Startseite → Einstellungen): Reihenfolge (Aufnahmezeit, Eingang, Zufall), Hintergrund bei Hochformat, Wiederholen, neue Fotos sofort zeigen (Live-Diashow für Feiern), Speicherort intern oder USB-Stick, neuer QR-Code, alle Fotos löschen.
+Weitere Einstellungen (Startseite → Einstellungen): Reihenfolge (Aufnahmezeit, Eingang, Zufall), Hintergrund bei Hochformat, Wiederholen, neue Fotos sofort zeigen (Live-Diashow für Feiern), Speicherort intern oder USB-Stick, alles auf einen anderen Speicher verschieben, neuer QR-Code, alle Fotos löschen.
 
 ## Installation auf dem Beamer
 
@@ -70,7 +76,7 @@ Ein Update wird genauso installiert; die Fotos bleiben dabei erhalten.
 
 - Der Beamer nimmt Fotos nur an, solange die App geöffnet ist.
 - iPhone-Fotos (HEIC) wandelt das iPhone beim Senden automatisch in JPG um.
-- Fotos auf dem USB-Stick liegen im Ordner `Android/data/com.beamerfotos.app/files/Fotos`. Beim Deinstallieren der App löscht Android diesen Ordner.
+- Fotos auf dem USB-Stick liegen im Ordner `Pictures/Beamer-Fotos`, gesendete Musik in `Music/Beamer-Fotos`. Beides bleibt beim Deinstallieren der App erhalten und ist am PC direkt zu finden.
 - Ohne den Code aus dem QR-Code nimmt der Beamer nichts an. „Neuen QR-Code erzeugen“ in den Einstellungen sperrt alte Links.
 - Kein Internet nötig außer dem WLAN zu Hause, kein Konto, keine Cloud, keine Werbung.
 
