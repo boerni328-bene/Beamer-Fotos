@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.7.0 (versionCode 9) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.7.1 (versionCode 10) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -19,6 +19,8 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
 - 0.5.0, Bild verbessern:
   - Die Farbmatrix steckt in `data/Picture` (getestet). „Automatisch“ arbeitet mit Grenzwerten aus dem Vorschaubild (`ImageLoader.levels`).
   - Regler in `ui/PicturePanel`, erreichbar über Menü → Bild und über die Einstellungen. Gilt für alle Fotos, nicht für Videos.
+- 0.7.1: In Firefox wird bei Video- und Musik-Auswahl das `accept` entfernt (sonst „No camera access“). Nicht unterstützte Dateien werden in `start()` ausgelassen. Auf dem Handy noch nicht geprüft.
+- Freigegeben am 27.11. (in dieser Reihenfolge): 0.8.0 Bilderrahmen, Fortsetzen, Favoriten und Ausblenden, Duplikate · 0.9.0 Doppelbild und Collage, Zeitleiste · 0.10.0 Handy-Fernbedienung, schnelles Senden (nur als Schalter, ab Werk aus).
 - 0.7.0:
   - „Automatisch verbessern“ rechnet jetzt an den Pixeln (`data/Enhance`, getestet): halber Grauwelt-Weißabgleich, Tonwerte (Streckung höchstens 2×), Gamma Richtung 45 %, Lebendigkeit, Unscharfmaskierung. Dazu der neue Regler „Schärfe“.
   - Berechnet wird in `ImageLoader.full(…, auto, sharpness)` mit Software-Decode, das Ergebnis wird als HARDWARE-Bitmap kopiert. Der Cache-Schlüssel enthält die Einstellungen. Die Farbmatrix (`Picture.matrix`) deckt nur noch die Regler ab.

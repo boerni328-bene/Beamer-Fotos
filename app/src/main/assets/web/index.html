@@ -269,11 +269,23 @@
     })();
   }
 
+  function supported(file) {
+    return IMAGE.test(file.name || "") || /^(image|video|audio)\//.test(file.type || "");
+  }
+
   function start(files) {
     if (!files.length) return;
+    errorList.textContent = "";
+    // Bei der allgemeinen Dateiauswahl (Firefox) können andere Dateien dabei sein: diese auslassen.
+    files.filter(function (f) { return !supported(f); }).forEach(function (f) {
+      var li = document.createElement("li");
+      li.textContent = (f.name || "Datei") + ": wird nicht unterstützt, ausgelassen.";
+      errorList.appendChild(li);
+    });
+    files = files.filter(supported);
+    if (!files.length) { progressBox.classList.remove("hidden"); return; }
     queue = files.slice();
     failed = [];
-    errorList.textContent = "";
     batchDone = 0;
     batchSize = queue.length;
     bar.style.width = "0";
@@ -297,6 +309,12 @@
     });
   }
   picker(chooseButton, fileInput);
+  // Firefox (Android) will bei video/* und audio/* immer auch aufnehmen und bricht ohne Kamerazugriff ab
+  // („No camera access“). Dort deshalb die allgemeine Dateiauswahl ohne Aufnahme öffnen.
+  if (/Firefox\//.test(navigator.userAgent)) {
+    document.getElementById("videodateien").removeAttribute("accept");
+    document.getElementById("musikdateien").removeAttribute("accept");
+  }
   picker(document.getElementById("waehlenvideo"), document.getElementById("videodateien"));
   picker(document.getElementById("waehlenmusik"), document.getElementById("musikdateien"));
   retryButton.addEventListener("click", function () { start(failed); });

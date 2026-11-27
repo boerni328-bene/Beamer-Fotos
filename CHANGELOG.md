@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.7.1] – 2026-11-27 (versionCode 10)
+
+### Behoben
+- Handy-Seite in Firefox: „🎬 Videos“ und „🎵 Musik“ meldeten weiterhin „No camera access“. Firefox öffnet dort jetzt die allgemeine Dateiauswahl ohne Aufnahme; nicht passende Dateien werden mit Hinweis ausgelassen. Chrome und Safari unverändert.
+
 ## [0.7.0] – 2026-11-27 (versionCode 9)
 
 ### Neu
