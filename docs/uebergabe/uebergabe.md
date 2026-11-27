@@ -1,67 +1,43 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.8.2 (versionCode 13) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.10.0 (versionCode 15) · Regeln und Code-Aufbau in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
-Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
+Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
 
 ## Stand
-- Vom Inhaber geprüft: 0.1.0, 0.2.0, 0.6.1 und 0.7.0 („Alles klappt“, 27.11.2026). Der Auftrag, 0.3.0 bis 0.6.0 ohne Rückfrage zu bauen, ist erledigt.
-- Für 0.4.0 gibt es kein eigenes Release, weil der Build am WAKE_LOCK scheiterte; die Änderungen stecken in 0.5.0.
-- 0.3.0, Gerät und USB:
-  - `data/MediaLibrary` liest Fotos und Videos über den MediaStore (`DATA`-Pfad, „external“ deckt alle Speicher ab) und bildet je Ordner ein Album (`Location.readOnly`, `Photo.readOnly`).
-  - `ui/DeviceScreen` mit Berechtigungsabfrage; „Alle zeigen“ läuft über `Screen.Show("media:<root>")`.
-  - Fremde Fotos sind nur lesbar; „In Album kopieren“ nutzt `PhotoStore.move` mit Kopie, im Hintergrund.
-- 0.4.0, Videos:
-  - `Names.isVideo`/`isMedia`, Upload bis 8 GB.
-  - Vorschau über `MediaMetadataRetriever`, Abspielzeichen im Raster.
-  - `ui/VideoPlayer` (Media3 ExoPlayer + PlayerView). In der Diashow bis zum Ende abspielen, bei Fehlern ein Hinweis und dann weiter; ⏪⏩ springen 10 s.
-- 0.5.0, Bild verbessern:
-  - Die Farbmatrix steckt in `data/Picture` (getestet). „Automatisch“ arbeitet mit Grenzwerten aus dem Vorschaubild (`ImageLoader.levels`).
-  - Regler in `ui/PicturePanel`, erreichbar über Menü → Bild und über die Einstellungen. Gilt für alle Fotos, nicht für Videos.
-- 0.8.2: USB über `StorageManager.storageVolumes` (wechselbar, eingehängt). Ab API 30 Speicherort `<Stick>/Pictures/Beamer-Fotos`, Musik `<Stick>/Music/Beamer-Fotos` (`Location.musicRoot`, `PUBLIC_FOLDER`), sonst `Android/data`. MediaLibrary und MusicLibrary blenden diese Pfade aus. Temp-Dateien behalten die Endung (`.<n>.part.jpg`), weil FUSE nur passende Typen erlaubt. `moveAllTo`, `moveMusic`, `deleteMusic`. `storageReport()` zeigt in den Einstellungen, was Android meldet. Auf dem Beamer noch nicht geprüft; Risiko: Schreibrechte auf dem Stick.
-- Mikrofon-Problem in Edge: lag an der Edge-Berechtigung, vom Inhaber erteilt. Seit dem 27.11. 0.9.0 und 0.10.0 ohne Rückfrage.
-- 0.8.1: Edge/Chrome (Android) verlangten bei `accept="audio/*"` den Mikrofonzugriff („No access“). Auf Android (außer Firefox) steht beim Musik-Feld jetzt `accept=".mp3"`: eine einzelne Endung öffnet die allgemeine Auswahl ohne Aufnahme. Risiko: Falls Chromium daraus doch einen MIME-Filter macht, wären nur MP3 wählbar. Ausweg: Edge das Mikrofon in den App-Infos erlauben. Auf dem Handy noch nicht geprüft.
-- 0.8.0:
-  - Bilderrahmen in `App()` (MainActivity): Leerlauf über `onPreviewKeyEvent`, dazu `startWithShow`. Uhr über `Clock` in der Diashow.
-  - Fortsetzen: `resumeKey(showId)` und `saveResume(LastShow)`, „Weiter“ auf der Startseite.
-  - Favoriten und Ausblenden: StringSets in den Prefs, mit `moveRotation`, `copyRotation` und `forgetRotation` mitgeführt. Diashow `FAVORITES`.
-  - Duplikate: SHA-256 beim Speichern, Vergleich mit gleich großen eigenen Fotos (`SaveResult.Duplicate`, Antwort `duplicate:true`).
-- 0.7.1: In Firefox wird bei Video- und Musik-Auswahl das `accept` entfernt (sonst „No camera access“). Nicht unterstützte Dateien werden in `start()` ausgelassen. Auf dem Handy noch nicht geprüft.
-- Freigegeben am 27.11. (in dieser Reihenfolge): 0.8.0 Bilderrahmen, Fortsetzen, Favoriten und Ausblenden, Duplikate · 0.9.0 Doppelbild und Collage, Zeitleiste · 0.10.0 Handy-Fernbedienung, schnelles Senden (nur als Schalter, ab Werk aus).
-- 0.7.0:
-  - „Automatisch verbessern“ rechnet jetzt an den Pixeln (`data/Enhance`, getestet): halber Grauwelt-Weißabgleich, Tonwerte (Streckung höchstens 2×), Gamma Richtung 45 %, Lebendigkeit, Unscharfmaskierung. Dazu der neue Regler „Schärfe“.
-  - Berechnet wird in `ImageLoader.full(…, auto, sharpness)` mit Software-Decode, das Ergebnis wird als HARDWARE-Bitmap kopiert. Der Cache-Schlüssel enthält die Einstellungen. Die Farbmatrix (`Picture.matrix`) deckt nur noch die Regler ab.
-  - Menüpunkt Musik in der Diashow (`MusicMenuButton`): ▲▼ ruft `switchStation` auf (Radio.kt), OK schaltet Pause/Weiter.
-  - Auf dem Beamer geprüft, keine Probleme gemeldet.
-- 0.6.1: Handy-Seite mit getrennten Auswahlknöpfen (Fotos/Videos/Musik). Gemischtes `accept` löste in Firefox „No camera access“ aus.
-- 0.6.0, Musik:
-  - `music/MusicPlayer`: ein ExoPlayer für die ganze App. Er pausiert in `onStop` und läuft in `onStart` weiter; bei Videos geht die Lautstärke auf 0 (`duck`).
-  - `music/RadioStore`: Sender in den Prefs, Suche über radio-browser.info, .pls/.m3u werden aufgelöst. HLS-Streams laufen über `media3-exoplayer-hls`, für http-Streams ist `usesCleartextTraffic` gesetzt.
-  - `music/MusicLibrary`: gesendete Musik in `<Speicher>/Musik` und MediaStore-Audio (READ_MEDIA_AUDIO).
-  - Seite `ui/MusicScreen`. Handy-Seite: Musik ⏯/⏭, Sender hinzufügen (`POST /api/radio`), Musik senden.
-- Berechtigungen: INTERNET, ACCESS_NETWORK_STATE, READ_MEDIA_IMAGES/VIDEO/AUDIO, READ_EXTERNAL_STORAGE (max 32). WAKE_LOCK aus Media3 wird mit `tools:node="remove"` entfernt.
+- Vom Inhaber geprüft: bis 0.7.0 („Alles klappt“). 0.8.1: Musik-Auswahl in Edge scheiterte an der fehlenden Mikrofon-Berechtigung von Edge; der Inhaber hat sie erteilt, das Problem ist erledigt.
+- Ungeprüft auf dem Beamer: 0.7.1, 0.8.0, 0.8.2, 0.9.0, 0.10.0 (alle Builds grün, APKs in `apk\`).
+- 0.8.0: Bilderrahmen (Leerlauf in `App()`, `startWithShow`, `Clock`), Fortsetzen (`resumeKey`, `saveResume`), Favoriten und Ausblenden (Prefs-Sets), Duplikate per SHA-256.
+- 0.8.2, USB-Speicher:
+  - `PhotoStore.locations()` über `StorageManager.storageVolumes`. Ab API 30 Fotos in `<Stick>/Pictures/Beamer-Fotos` und Musik in `<Stick>/Music/Beamer-Fotos` (`Location.musicRoot`, `PUBLIC_FOLDER`), sonst `Android/data`.
+  - MediaLibrary und MusicLibrary blenden diese Pfade aus. Temp-Dateien behalten die Endung (`.<n>.part.jpg`), da FUSE nur passende Typen erlaubt.
+  - `moveAllTo` (Einstellungen „Alle Fotos und Musik verschieben nach …“), `moveMusic`/`deleteMusic` (Musikseite). `storageReport()` zeigt in den Einstellungen, was Android meldet, falls der Stick fehlt.
+  - Risiko: Schreibrechte auf dem Stick (FUSE). Falls es scheitert, wäre die Alternative MediaStore-Insert oder SAF.
+- 0.9.0:
+  - `data/Layouts` (getestet): Einstellung „Fotos je Bild“ (`Layout.SINGLE/PAIRS/COLLAGE`, Pref „anordnung“). Paare nur bei zwei Hochformaten (`ImageLoader.isPortrait`, Kopf + EXIF, gemerkt), Collage bis 4, Videos allein.
+  - In der Diashow `groupAt`/`groupFrom`, `previousGroup`, `drawGroup` und `drawPhoto(area)`. Zoom und Drehen nur bei einzelnen Fotos. Mehrfachbilder bleiben 1,5× so lange stehen. LRU der großen Bilder 10.
+  - `data/Timeline` (getestet), `ui/TimelineScreen`: Schlüssel „zeit:JJJJ“, „zeit:JJJJ-MM“, „heute“ als Diashow-Quelle. Startseite: „Zeitleiste“ und „Heute vor x Jahren“.
+- 0.10.0:
+  - Handy-Fernbedienung: `RemoteCommand` ist jetzt ein sealed interface (`GoTo`, `ZoomTo`). `UploadServer.show` (`ShowState`) wird von der Diashow gesetzt.
+  - Endpunkte `/api/show`, `/api/thumb?i=` (JPEG aus dem Vorschau-Cache, `ImageLoader.thumbJpeg`), `/api/stations`; Befehle `goto`, `zoom`, `station`.
+  - Handy-Seite: Bildleiste (40 um das aktuelle Foto), Fingerzoom-Vorschau (16:9, Verschiebung als Anteil wie `pan`), Senderknöpfe, Abfrage alle 2,5 s.
+  - „Schnell senden“ (Handy-Seite, localStorage „fastSend“, ab Werk aus): JPG/PNG/WebP mit langer Seite > 3840 werden per Canvas auf 3840 verkleinert (JPEG 0,92). Das EXIF-Datum liest `exifDate()` aus; der Server schreibt es als `exifdate` per ExifInterface zurück.
+  - Am PC mit dem Testserver geprüft (`scratchpad/mock.ps1`, Port 8765, Code test42), auf Handy und Beamer noch nicht.
 
 ## Entscheidungen (Inhaber)
 - 26.11.: QR-Code und Browser, keine Handy-App; Aufbau wie Tabletten-Checker; Repository öffentlich.
 - 27.11.:
-  - „Medien lesen“ ist freigegeben.
-  - Musik nur innerhalb der App, kein Hintergrunddienst.
-  - Trennung nach Handy innerhalb eines Albums.
-  - Versionen bis 0.6.0 ohne Rückfrage.
+  - „Medien lesen“ ist freigegeben. Musik nur in der App. Trennung nach Handy im Album.
+  - Ideen 1, 2, 4, 5, 6, 8, 10 umgesetzt; 7 nur als Schalter, ab Werk aus.
+  - 0.9.0 und 0.10.0 ohne Rückfrage gebaut.
+  - Alles wahlweise auf dem USB-Stick; gesendete Musik löschen und verschieben.
 
 ## Offen / nächste Schritte
-1. Gemeldete Fehler abwarten. Falls es Probleme gibt, besonders prüfen:
-   - Berechtigungsdialoge, USB-Stick (wird er im MediaStore gefunden?), Videos in MKV und AVI.
-   - Bildregler mit der Fernbedienung, Radio-Suche und -Wiedergabe, Musik während Videos.
-2. Risiken:
-   - Erkennt der MoGo 4 den USB-Stick nicht im MediaStore, wäre die Alternative die Ordnerauswahl per Storage Access Framework.
-   - Codecs von AVI- und MKV-Dateien.
-   - PlayerView (SurfaceView) mit Compose-Einblendungen.
-3. Ideen: Bildeinstellungen je Foto; Zoom-Tasten auf der Handy-Seite; Fotos auf dem Handy verkleinern. Offene Frage: Lizenz (Moltobene: GPL-3.0)?
-
-## Arbeitsweise
-- Push auf `main` baut; neue `versionName` + CHANGELOG-Abschnitt ergibt ein Release (mit `beamer-fotos.apk` ohne Versionsnummer für einen festen Download-Link).
-- Nach jedem Release `tools\apk-holen.ps1` ausführen → Kopie in `apk\` (nicht im Repository).
-- Fehler: `gh run view <id> --log-failed`. Neue Bibliotheken bringen manchmal Berechtigungen mit: der Build prüft gegen ERLAUBT in `build.yml`.
-- Signaturschlüssel: `D:\Claude\Projekte\Beamer-Fotos-Signatur` (Fingerabdruck steht in `build.yml`).
+1. Rückmeldung des Inhabers zu 0.8.2 bis 0.10.0 abwarten. Besonders prüfen:
+   - USB-Stick erscheint und ist beschreibbar.
+   - Collage-Speicher und -Geschwindigkeit auf dem MoGo 4.
+   - Fingerzoom auf dem iPhone.
+   - Schnell senden auf dem iPhone (HEIC bleibt Original).
+2. Risiken: AVI/MKV-Codecs, PlayerView mit Compose-Einblendungen, viele Fotos in `ShowState` (Liste wird bei jedem Wechsel kopiert).
+3. Ideen: Bildeinstellungen je Foto. Offene Frage: Lizenz (Moltobene: GPL-3.0)?
