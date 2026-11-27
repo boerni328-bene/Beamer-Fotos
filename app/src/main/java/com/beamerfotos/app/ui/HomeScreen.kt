@@ -75,6 +75,7 @@ fun HomeScreen(
     onAlbum: (Album) -> Unit,
     onPlayAll: () -> Unit,
     onSettings: () -> Unit,
+    onDevice: () -> Unit,
 ) {
     val albums by graph.store.albums.collectAsState()
     val settings by graph.settings.state.collectAsState()
@@ -136,6 +137,8 @@ fun HomeScreen(
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     Spacer(Modifier.width(16.dp))
+                    TvButton("Gerät & USB-Stick", onClick = onDevice)
+                    Spacer(Modifier.width(16.dp))
                     TvButton("Einstellungen", onClick = onSettings, icon = Icons.Filled.Settings)
                 }
                 Spacer(Modifier.height(20.dp))
@@ -163,7 +166,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun AlbumCard(album: Album, onClick: () -> Unit) {
+fun AlbumCard(album: Album, onClick: () -> Unit) {
     Column(
         Modifier
             .tvFocus()

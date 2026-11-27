@@ -29,6 +29,12 @@ Zoom: ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben 
 
 Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos); mit **Name ändern** lässt sich ein Absender umbenennen oder mit einem anderen zusammenfassen. **Auswählen** → Fotos mit OK markieren → **Löschen** oder **Verschieben** (in ein anderes oder neues Album). Außerdem: **Umbenennen** und **Album löschen**.
 
+## Fotos vom Beamer und vom USB-Stick
+
+Startseite → **Gerät & USB-Stick**: alle Fotos, die schon auf dem Beamer oder einem eingesteckten USB-Stick liegen, nach Ordnern. Beim ersten Mal fragt der Beamer nach der Berechtigung „Fotos und Videos“. Die Fotos werden nur gezeigt, nie verändert. Mit **Auswählen → In Album kopieren** lassen sie sich in ein eigenes Album übernehmen.
+
+## Einstellungen
+
 Weitere Einstellungen (Startseite → Einstellungen): Reihenfolge (Aufnahmezeit, Eingang, Zufall), Hintergrund bei Hochformat, Wiederholen, neue Fotos sofort zeigen (Live-Diashow für Feiern), Speicherort intern oder USB-Stick, neuer QR-Code, alle Fotos löschen.
 
 ## Installation auf dem Beamer

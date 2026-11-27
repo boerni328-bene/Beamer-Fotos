@@ -22,12 +22,26 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 /** Ein Foto; [sender] ist der Name des Handys, von dem es kam (leer, wenn unbekannt). */
-data class Photo(val file: File, val album: String, val sender: String, val captured: Long, val arrived: Long) {
+data class Photo(
+    val file: File,
+    val album: String,
+    val sender: String,
+    val captured: Long,
+    val arrived: Long,
+    /** Liegt auf dem Gerät oder USB-Stick, nicht über die App gekommen: nur zeigen, nie ändern. */
+    val readOnly: Boolean = false,
+) {
     val key: String get() = file.absolutePath
 }
 
 /** Ein Speicherort: intern oder ein USB-Speicher. Fotos liegen in <root>/<Album>/<Datei>. */
-data class Location(val id: String, val label: String, val root: File, val removable: Boolean) {
+data class Location(
+    val id: String,
+    val label: String,
+    val root: File,
+    val removable: Boolean,
+    val readOnly: Boolean = false,
+) {
     fun free(): Long = runCatching { root.mkdirs(); root.usableSpace }.getOrDefault(0L)
 }
 
@@ -142,7 +156,7 @@ class PhotoStore(
     fun delete(photo: Photo) = delete(listOf(photo))
 
     fun delete(photos: Collection<Photo>) {
-        photos.forEach { photo ->
+        photos.filterNot { it.readOnly }.forEach { photo ->
             ImageLoader.forget(photo.file)
             photo.file.delete()
             settings.forgetRotation(photo.key)
@@ -163,6 +177,21 @@ class PhotoStore(
             if (!dir.isDirectory && !dir.mkdirs()) return@forEach
             val target = synchronized(renameLock) {
                 File(dir, Names.unique(photo.file.name) { File(dir, it).exists() })
+            }
+            if (photo.readOnly) {
+                // Fotos vom Gerät oder USB-Stick werden nur kopiert, das Original bleibt.
+                if (dir.usableSpace < photo.file.length() + RESERVE_BYTES) return@forEach
+                val copied = runCatching {
+                    photo.file.copyTo(target)
+                    target.setLastModified(photo.file.lastModified())
+                }.isSuccess
+                if (copied) {
+                    settings.copyRotation(photo.key, target.absolutePath)
+                    moved++
+                } else {
+                    target.delete()
+                }
+                return@forEach
             }
             val ok = photo.file.renameTo(target) || runCatching {
                 // Anderer Speicher (intern ↔ USB): kopieren, dann löschen.

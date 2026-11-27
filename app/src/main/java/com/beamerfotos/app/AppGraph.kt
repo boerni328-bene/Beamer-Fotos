@@ -1,6 +1,7 @@
 package com.beamerfotos.app
 
 import android.content.Context
+import com.beamerfotos.app.data.MediaLibrary
 import com.beamerfotos.app.data.PhotoStore
 import com.beamerfotos.app.data.SettingsStore
 import com.beamerfotos.app.image.ImageLoader
@@ -14,6 +15,7 @@ class AppGraph private constructor(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val settings = SettingsStore(context)
     val store = PhotoStore(context, settings, scope)
+    val media = MediaLibrary(context, scope)
     val server = UploadServer(context, store, settings)
 
     companion object {

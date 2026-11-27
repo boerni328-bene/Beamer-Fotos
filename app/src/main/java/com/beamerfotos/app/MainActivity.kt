@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import com.beamerfotos.app.server.RemoteCommand
 import com.beamerfotos.app.ui.AlbumScreen
 import com.beamerfotos.app.ui.BeamerTheme
+import com.beamerfotos.app.ui.DeviceScreen
 import com.beamerfotos.app.ui.HomeScreen
 import com.beamerfotos.app.ui.SettingsScreen
 import com.beamerfotos.app.ui.SlideshowScreen
@@ -46,6 +47,7 @@ sealed interface Screen {
     data class AlbumView(val albumKey: String) : Screen
     data class Show(val albumKey: String?, val startKey: String?, val sender: String? = null) : Screen
     data object Settings : Screen
+    data object Device : Screen
 }
 
 @Composable
@@ -73,6 +75,7 @@ fun App(graph: AppGraph) {
             onAlbum = { push(Screen.AlbumView(it.key)) },
             onPlayAll = { push(Screen.Show(null, null)) },
             onSettings = { push(Screen.Settings) },
+            onDevice = { push(Screen.Device) },
         )
         is Screen.AlbumView -> AlbumScreen(
             graph = graph,
@@ -88,5 +91,10 @@ fun App(graph: AppGraph) {
             sender = screen.sender,
         )
         Screen.Settings -> SettingsScreen(graph = graph)
+        Screen.Device -> DeviceScreen(
+            graph = graph,
+            onAlbum = { push(Screen.AlbumView(it.key)) },
+            onPlayLocation = { push(Screen.Show(it, null)) },
+        )
     }
 }

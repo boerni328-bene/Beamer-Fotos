@@ -44,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +63,10 @@ import com.beamerfotos.app.data.Names
 import com.beamerfotos.app.data.Order
 import com.beamerfotos.app.data.Photo
 import com.beamerfotos.app.data.ordered
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Anzeigename eines Absenders. */
@@ -89,18 +93,21 @@ fun AlbumScreen(
     onBack: () -> Unit,
     onRenamed: (newKey: String) -> Unit,
 ) {
-    val albums by graph.store.albums.collectAsState()
+    val ownAlbums by graph.store.albums.collectAsState()
+    val mediaAlbums by graph.media.albums.collectAsState()
+    val albums = ownAlbums
     val settings by graph.settings.state.collectAsState()
     val rotations by graph.settings.rotations.collectAsState()
 
     val key = albumKey
-    val album = albums.firstOrNull { it.key == key }
+    val album = (ownAlbums + mediaAlbums).firstOrNull { it.key == key }
     var filter by remember { mutableStateOf<String?>(null) }
     var selecting by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var dialog by remember { mutableStateOf<AlbumDialog?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val firstFocus = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
 
     if (album == null) {
         // Album gelöscht oder USB-Speicher entfernt (kurz warten: nach dem Umbenennen wird neu eingelesen).
@@ -118,6 +125,8 @@ fun AlbumScreen(
     }
 
     // Filter gilt nur, solange es den Absender noch gibt.
+    val readOnly = album.location.readOnly
+    val done = if (readOnly) "kopiert" else "verschoben"
     val senders = album.senders
     val sender = filter?.takeIf { s -> senders.any { it.first == s } }
     val showFilter = senders.size > 1 || senders.any { it.first.isNotEmpty() }
@@ -153,8 +162,10 @@ fun AlbumScreen(
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     if (chosen.isNotEmpty()) {
-                        TvButton("Verschieben", onClick = { dialog = AlbumDialog.Move })
-                        TvButton("Löschen", onClick = { dialog = AlbumDialog.DeleteSelected }, icon = Icons.Filled.Delete)
+                        TvButton(if (readOnly) "In Album kopieren" else "Verschieben", onClick = { dialog = AlbumDialog.Move })
+                        if (!readOnly) {
+                            TvButton("Löschen", onClick = { dialog = AlbumDialog.DeleteSelected }, icon = Icons.Filled.Delete)
+                        }
                     }
                     TvButton("Fertig", onClick = {
                         selecting = false
@@ -166,11 +177,13 @@ fun AlbumScreen(
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     TvButton("Auswählen", onClick = { selecting = true }, icon = Icons.Filled.Check)
-                    if (sender != null) {
+                    if (sender != null && !readOnly) {
                         TvButton("Name ändern", onClick = { dialog = AlbumDialog.RenameSender }, icon = Icons.Filled.Edit)
                     }
-                    TvButton("Album umbenennen", onClick = { dialog = AlbumDialog.Rename }, icon = Icons.Filled.Edit)
-                    TvButton("Album löschen", onClick = { dialog = AlbumDialog.DeleteAlbum }, icon = Icons.Filled.Delete)
+                    if (!readOnly) {
+                        TvButton("Album umbenennen", onClick = { dialog = AlbumDialog.Rename }, icon = Icons.Filled.Edit)
+                        TvButton("Album löschen", onClick = { dialog = AlbumDialog.DeleteAlbum }, icon = Icons.Filled.Delete)
+                    }
                 }
             }
         }
@@ -249,6 +262,16 @@ fun AlbumScreen(
         message = text
     }
 
+    /** Verschieben bzw. kopieren im Hintergrund (vom USB-Stick kann das dauern). */
+    fun transfer(target: File) {
+        val list = chosen
+        finishSelection("${photoCount(list.size)} werden ${if (readOnly) "kopiert" else "verschoben"} …")
+        scope.launch {
+            val n = withContext(Dispatchers.IO) { graph.store.move(list, target) }
+            message = "${photoCount(n)} nach „${target.name}“ $done."
+        }
+    }
+
     when (dialog) {
         AlbumDialog.DeleteAlbum -> ConfirmDialog(
             title = "Album „${album.name}“ löschen?",
@@ -287,24 +310,21 @@ fun AlbumScreen(
         AlbumDialog.Move -> MoveDialog(
             albums = albums.filter { it.key != album.key },
             count = chosen.size,
-            onPick = { target ->
-                val n = graph.store.move(chosen, target.dir)
-                finishSelection("${photoCount(n)} nach „${target.name}“ verschoben.")
-            },
+            copy = readOnly,
+            onPick = { target -> transfer(target.dir) },
             onNew = { dialog = AlbumDialog.NewAlbum },
             onDismiss = { dialog = null },
         )
         AlbumDialog.NewAlbum -> TextInputDialog(
             title = "Neues Album",
             initial = "",
-            confirm = "Verschieben",
+            confirm = if (readOnly) "Kopieren" else "Verschieben",
             onConfirm = { name ->
-                val dir: File? = graph.store.albumDir(name, album.location)
+                val dir: File? = graph.store.albumDir(name, if (readOnly) null else album.location)
                 if (dir == null) {
                     "Bitte einen Namen eingeben."
                 } else {
-                    val n = graph.store.move(chosen, dir)
-                    finishSelection("${photoCount(n)} nach „${dir.name}“ verschoben.")
+                    transfer(dir)
                     null
                 }
             },
@@ -351,6 +371,7 @@ private fun FilterChip(text: String, active: Boolean, onClick: () -> Unit) {
 private fun MoveDialog(
     albums: List<Album>,
     count: Int,
+    copy: Boolean,
     onPick: (Album) -> Unit,
     onNew: () -> Unit,
     onDismiss: () -> Unit,
@@ -363,7 +384,7 @@ private fun MoveDialog(
                 .background(Panel)
                 .padding(28.dp)
         ) {
-            Text("${photoCount(count)} verschieben nach …", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text("${photoCount(count)} ${if (copy) "kopieren" else "verschieben"} nach …", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
             LazyColumn(Modifier.heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {

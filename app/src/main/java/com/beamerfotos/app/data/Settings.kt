@@ -105,6 +105,12 @@ class SettingsStore(context: Context) {
         prefs.edit().remove(ROT + from).putInt(ROT + to, deg).apply()
     }
 
+    fun copyRotation(from: String, to: String) {
+        val deg = _rotations.value[from] ?: return
+        _rotations.value = _rotations.value + (to to deg)
+        prefs.edit().putInt(ROT + to, deg).apply()
+    }
+
     fun forgetRotation(path: String) {
         if (path !in _rotations.value) return
         _rotations.value = _rotations.value - path

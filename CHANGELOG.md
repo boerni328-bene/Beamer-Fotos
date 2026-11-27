@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.3.0] – 2026-11-27 (versionCode 4)
+
+### Neu
+- **Fotos vom Beamer und vom USB-Stick:** Startseite → „Gerät & USB-Stick“. Zeigt alle Fotos, die schon auf dem Beamer oder einem eingesteckten USB-Stick liegen, nach Ordnern; je Speicher „Alle zeigen“ als Diashow. Diese Fotos werden nur gezeigt, nie verändert oder gelöscht.
+- **In Album kopieren:** In einem solchen Ordner „Auswählen“ → Fotos markieren → „In Album kopieren“ (vorhandenes oder neues eigenes Album).
+- Neue Berechtigung „Fotos und Videos lesen“; der Beamer fragt beim ersten Öffnen von „Gerät & USB-Stick“ einmal nach.
+
 ## [0.2.1] – 2026-11-27 (versionCode 3)
 
 ### Behoben

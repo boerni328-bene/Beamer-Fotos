@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Eigene WLAN-Adresse herausfinden (für den QR-Code). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Fotos und Videos zeigen, die schon auf dem Beamer oder einem USB-Stick liegen (Freigabe 27.11.2026). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
     <!-- Läuft auf Beamern und Fernsehern (Google TV / Android TV), ohne Touchscreen. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -12,6 +16,7 @@
 
     <application
         android:allowBackup="false"
+        android:requestLegacyExternalStorage="true"
         android:banner="@drawable/banner"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

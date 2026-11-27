@@ -119,16 +119,20 @@ private fun rememberFull(photo: Photo?, width: Int, height: Int): ImageBitmap? {
 fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sender: String? = null) {
     val settings by graph.settings.state.collectAsState()
     val albums by graph.store.albums.collectAsState()
+    val mediaAlbums by graph.media.albums.collectAsState()
     val rotations by graph.settings.rotations.collectAsState()
     val url = rememberUploadUrl(graph)
     val scope = rememberCoroutineScope()
 
-    fun source(list: List<Album>): List<Photo> =
-        (if (albumKey == null) list.flatMap { it.photos } else list.filter { it.key == albumKey }.flatMap { it.photos })
-            .filter { sender == null || it.sender == sender }
+    // Ohne Album: alle eigenen Fotos. „media:…“: alle Fotos eines Speichers (Gerät oder USB-Stick).
+    fun source(own: List<Album>, media: List<Album>): List<Photo> = when {
+        albumKey == null -> own.flatMap { it.photos }
+        albumKey.startsWith("media:") -> media.filter { it.location.id == albumKey }.flatMap { it.photos }
+        else -> (own + media).filter { it.key == albumKey }.flatMap { it.photos }
+    }.filter { sender == null || it.sender == sender }
 
     val seed = remember { System.currentTimeMillis() }
-    val photos = remember { mutableStateListOf<Photo>().apply { addAll(ordered(source(albums), settings.order, seed)) } }
+    val photos = remember { mutableStateListOf<Photo>().apply { addAll(ordered(source(albums, mediaAlbums), settings.order, seed)) } }
     var index by remember { mutableIntStateOf(photos.indexOfFirst { it.key == startKey }.coerceAtLeast(0)) }
     var previous by remember { mutableStateOf<Photo?>(null) }
     var previousKb by remember { mutableFloatStateOf(0f) }
@@ -198,8 +202,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     }
 
     // Neue und gelöschte Fotos übernehmen, ohne die laufende Diashow neu zu starten.
-    LaunchedEffect(albums) {
-        val all = source(albums)
+    LaunchedEffect(albums, mediaAlbums) {
+        val all = source(albums, mediaAlbums)
         val allKeys = all.map { it.key }.toHashSet()
         if (photos.any { it.key !in allKeys }) {
             val currentKey = photos.getOrNull(index)?.key
@@ -452,6 +456,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                 graph = graph,
                 paused = paused,
                 hasPhoto = current != null,
+                canDelete = current?.readOnly == false,
                 onTogglePause = { togglePause() },
                 onRotate = { current?.let { graph.settings.rotate(it.key) } },
                 onZoom = {
@@ -576,6 +581,7 @@ private fun MenuPanel(
     graph: AppGraph,
     paused: Boolean,
     hasPhoto: Boolean,
+    canDelete: Boolean,
     onTogglePause: () -> Unit,
     onRotate: () -> Unit,
     onZoom: () -> Unit,
@@ -619,7 +625,7 @@ private fun MenuPanel(
             TvButton("QR-Code: ${if (s.showQr) "an" else "aus"}", onClick = {
                 graph.settings.update { it.copy(showQr = !it.showQr) }
             })
-            if (hasPhoto) {
+            if (canDelete) {
                 TvButton(
                     if (confirmDelete) "Wirklich löschen?" else "Foto löschen",
                     onClick = { if (confirmDelete) onDelete() else confirmDelete = true },
