@@ -123,9 +123,9 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     val url = rememberUploadUrl(graph)
     val scope = rememberCoroutineScope()
 
-    fun source(list: List<Album>): List<Photo> = sourceAll(list).filter { sender == null || it.sender == sender }
-    fun sourceAll(list: List<Album>): List<Photo> =
-        if (albumKey == null) list.flatMap { it.photos } else list.filter { it.key == albumKey }.flatMap { it.photos }
+    fun source(list: List<Album>): List<Photo> =
+        (if (albumKey == null) list.flatMap { it.photos } else list.filter { it.key == albumKey }.flatMap { it.photos })
+            .filter { sender == null || it.sender == sender }
 
     val seed = remember { System.currentTimeMillis() }
     val photos = remember { mutableStateListOf<Photo>().apply { addAll(ordered(source(albums), settings.order, seed)) } }
