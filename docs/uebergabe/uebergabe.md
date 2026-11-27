@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.8.0 (versionCode 11) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.8.1 (versionCode 12) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -19,6 +19,7 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
 - 0.5.0, Bild verbessern:
   - Die Farbmatrix steckt in `data/Picture` (getestet). „Automatisch“ arbeitet mit Grenzwerten aus dem Vorschaubild (`ImageLoader.levels`).
   - Regler in `ui/PicturePanel`, erreichbar über Menü → Bild und über die Einstellungen. Gilt für alle Fotos, nicht für Videos.
+- 0.8.1: Edge/Chrome (Android) verlangten bei `accept="audio/*"` den Mikrofonzugriff („No access“). Auf Android (außer Firefox) steht beim Musik-Feld jetzt `accept=".mp3"`: eine einzelne Endung öffnet die allgemeine Auswahl ohne Aufnahme. Risiko: Falls Chromium daraus doch einen MIME-Filter macht, wären nur MP3 wählbar. Ausweg: Edge das Mikrofon in den App-Infos erlauben. Auf dem Handy noch nicht geprüft.
 - 0.8.0:
   - Bilderrahmen in `App()` (MainActivity): Leerlauf über `onPreviewKeyEvent`, dazu `startWithShow`. Uhr über `Clock` in der Diashow.
   - Fortsetzen: `resumeKey(showId)` und `saveResume(LastShow)`, „Weiter“ auf der Startseite.
