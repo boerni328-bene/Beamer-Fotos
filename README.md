@@ -27,7 +27,7 @@ Zoom: ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben 
 
 ## Fotos ordnen
 
-Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos). **Auswählen** → Fotos mit OK markieren → **Löschen** oder **Verschieben** (in ein anderes oder neues Album). Außerdem: **Umbenennen** und **Album löschen**.
+Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos); mit **Name ändern** lässt sich ein Absender umbenennen oder mit einem anderen zusammenfassen. **Auswählen** → Fotos mit OK markieren → **Löschen** oder **Verschieben** (in ein anderes oder neues Album). Außerdem: **Umbenennen** und **Album löschen**.
 
 Weitere Einstellungen (Startseite → Einstellungen): Reihenfolge (Aufnahmezeit, Eingang, Zufall), Hintergrund bei Hochformat, Wiederholen, neue Fotos sofort zeigen (Live-Diashow für Feiern), Speicherort intern oder USB-Stick, neuer QR-Code, alle Fotos löschen.
 

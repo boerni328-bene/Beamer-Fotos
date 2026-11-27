@@ -3,10 +3,18 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.2.1] – 2026-11-27 (versionCode 3)
+
+### Behoben
+- Handy-Seite: Der in 0.1.0 eingegebene Name landete im Feld „Album“, das Feld „Name“ blieb leer und am Beamer erschien „Android …“. Der alte Name wird jetzt ins Feld „Name“ übernommen. Ohne Namen lassen sich keine Fotos mehr auswählen; unter den Feldern steht, als wer und in welches Album gesendet wird.
+
+### Neu
+- **Name ändern:** Im Album einen Absender wählen und „Name ändern“ drücken, z. B. „Android K7Q“ in „Anna“. Gibt es den Namen schon, werden beide zusammengefasst.
+
 ## [0.2.0] – 2026-11-27 (versionCode 2)
 
 ### Neu
-- **Fotos nach Handy getrennt:** Auf der Handy-Seite gibt es jetzt zwei Felder: Name (von wem die Fotos kommen) und Album. Ohne Album landen die Fotos in „Fotos <heutiges Datum>“, ohne Namen unter dem Gerätetyp (z. B. „iPhone K7Q“). Im Album lässt sich oben nach Absender filtern; die Diashow zeigt dann nur dessen Fotos.
+- **Fotos nach Handy getrennt:** Auf der Handy-Seite gibt es jetzt zwei Felder: Name (von wem die Fotos kommen) und Album. Ohne Album landen die Fotos in „Fotos <heutiges Datum>“. Im Album lässt sich oben nach Absender filtern; die Diashow zeigt dann nur dessen Fotos.
 - **Fotos auswählen:** Im Album „Auswählen“ drücken, Fotos mit OK markieren (oder „Alle“), dann löschen oder in ein anderes bzw. neues Album verschieben.
 - **Album umbenennen.**
 - **Stufenloser Zoom bis 6×:** In der Diashow ▲ → „Zoom“. ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben mit den Pfeiltasten, Zurück beendet den Zoom.

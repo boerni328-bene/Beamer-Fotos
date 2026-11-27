@@ -205,6 +205,40 @@ class PhotoStore(
         return null
     }
 
+    /**
+     * Benennt einen Absender im Album um (oder fasst zwei zusammen, wenn es den Namen schon gibt).
+     * null bei Erfolg, sonst ein Hinweis.
+     */
+    fun renameSender(album: Album, old: String, newRaw: String): String? {
+        val name = Names.senderName(newRaw)
+        if (name.isEmpty()) return "Bitte einen Namen eingeben."
+        if (name == old) return null
+        val target = File(album.dir, name)
+        val photos = album.photos.filter { it.sender == old }
+        if (old.isNotEmpty() && !target.exists()) {
+            val source = File(album.dir, old)
+            if (!source.renameTo(target)) return "Umbenennen nicht möglich."
+            photos.forEach {
+                ImageLoader.forget(it.file)
+                settings.moveRotation(it.key, File(target, it.file.name).absolutePath)
+            }
+        } else {
+            if (!target.isDirectory && !target.mkdirs()) return "Umbenennen nicht möglich."
+            photos.forEach { photo ->
+                val dest = synchronized(renameLock) {
+                    File(target, Names.unique(photo.file.name) { File(target, it).exists() })
+                }
+                if (photo.file.renameTo(dest)) {
+                    ImageLoader.forget(photo.file)
+                    settings.moveRotation(photo.key, dest.absolutePath)
+                    pruneEmpty(photo.file.parentFile)
+                }
+            }
+        }
+        requestRefresh()
+        return null
+    }
+
     /** Leere Absender- und Albumordner entfernen (nie den Speicherort selbst). */
     private fun pruneEmpty(dir: File?) {
         val roots = locations().map { it.root.absoluteFile }.toSet()

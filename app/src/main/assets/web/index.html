@@ -45,9 +45,11 @@
     <div class="card">
       <label for="absender">Name (zeigt am Beamer, von wem die Fotos kommen)</label>
       <input type="text" id="absender" maxlength="40" placeholder="z. B. Anna" autocomplete="nickname">
-      <label for="album" style="margin-top:14px">Album</label>
+      <div class="status err" id="namefehlt" hidden>Bitte zuerst einen Namen eingeben.</div>
+      <label for="album" style="margin-top:14px">Album (optional)</label>
       <input type="text" id="album" maxlength="60" list="alben" placeholder="leer = Fotos von heute" autocomplete="off">
       <datalist id="alben"></datalist>
+      <p class="hint" id="vorschau"></p>
     </div>
 
     <div class="card">
@@ -94,30 +96,36 @@
 
   var queue = [], failed = [], busy = false, sentTotal = 0, batchDone = 0, batchSize = 0;
 
+  // Bis 0.2.0 hieß das einzige Feld „Name oder Anlass“ (Schlüssel albumName): als Name übernehmen.
+  try {
+    var old = localStorage.getItem("albumName");
+    if (old !== null) {
+      if (!localStorage.getItem("senderName")) localStorage.setItem("senderName", old);
+      localStorage.removeItem("albumName");
+    }
+  } catch (e) {}
+
   function remember(input, key) {
     try { input.value = localStorage.getItem(key) || ""; } catch (e) {}
-    input.addEventListener("change", function () {
+    input.addEventListener("input", function () {
       try { localStorage.setItem(key, input.value.trim()); } catch (e) {}
+      preview();
     });
   }
-  remember(senderInput, "senderName");
-  remember(albumInput, "albumName");
 
-  // Ohne Namen: Gerätetyp plus kurze Kennung, damit Handys trotzdem getrennt bleiben.
-  function deviceLabel() {
-    var id = "";
-    try {
-      id = localStorage.getItem("deviceId") || "";
-      if (!id) {
-        id = Math.random().toString(36).slice(2, 5).toUpperCase();
-        localStorage.setItem("deviceId", id);
-      }
-    } catch (e) {}
-    var ua = navigator.userAgent;
-    var type = /iPad/.test(ua) ? "iPad" : /iPhone/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : "Gerät";
-    return (type + " " + id).trim();
+  function sender() { return senderInput.value.trim(); }
+
+  function preview() {
+    var s = sender();
+    document.getElementById("vorschau").textContent = s
+      ? "Gesendet als „" + s + "“ ins Album „" + (albumInput.value.trim() || "Fotos von heute") + "“."
+      : "";
+    if (s) document.getElementById("namefehlt").hidden = true;
   }
-  function sender() { return senderInput.value.trim() || deviceLabel(); }
+
+  remember(senderInput, "senderName");
+  remember(albumInput, "album");
+  preview();
 
   function api(path) { return path + (path.indexOf("?") < 0 ? "?" : "&") + "t=" + encodeURIComponent(token); }
 
@@ -244,7 +252,14 @@
     run();
   }
 
-  chooseButton.addEventListener("click", function () { fileInput.click(); });
+  chooseButton.addEventListener("click", function () {
+    if (!sender()) {
+      document.getElementById("namefehlt").hidden = false;
+      senderInput.focus();
+      return;
+    }
+    fileInput.click();
+  });
   fileInput.addEventListener("change", function () {
     var files = Array.prototype.slice.call(fileInput.files || []);
     fileInput.value = "";

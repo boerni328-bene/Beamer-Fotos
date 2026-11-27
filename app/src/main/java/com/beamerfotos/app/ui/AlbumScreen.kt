@@ -74,6 +74,7 @@ private sealed interface AlbumDialog {
     data object Rename : AlbumDialog
     data object Move : AlbumDialog
     data object NewAlbum : AlbumDialog
+    data object RenameSender : AlbumDialog
 }
 
 /**
@@ -165,7 +166,10 @@ fun AlbumScreen(
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     TvButton("Auswählen", onClick = { selecting = true }, icon = Icons.Filled.Check)
-                    TvButton("Umbenennen", onClick = { dialog = AlbumDialog.Rename }, icon = Icons.Filled.Edit)
+                    if (sender != null) {
+                        TvButton("Name ändern", onClick = { dialog = AlbumDialog.RenameSender }, icon = Icons.Filled.Edit)
+                    }
+                    TvButton("Album umbenennen", onClick = { dialog = AlbumDialog.Rename }, icon = Icons.Filled.Edit)
                     TvButton("Album löschen", onClick = { dialog = AlbumDialog.DeleteAlbum }, icon = Icons.Filled.Delete)
                 }
             }
@@ -306,6 +310,24 @@ fun AlbumScreen(
             },
             onDismiss = { dialog = null },
         )
+        AlbumDialog.RenameSender -> {
+            val old = sender ?: ""
+            TextInputDialog(
+                title = "Name ändern: ${senderLabel(old)}",
+                initial = old,
+                confirm = "Ändern",
+                onConfirm = { name ->
+                    graph.store.renameSender(album, old, name).also {
+                        if (it == null) {
+                            dialog = null
+                            filter = Names.senderName(name)
+                            message = "Fotos von „${senderLabel(old)}“ heißen jetzt „${Names.senderName(name)}“."
+                        }
+                    }
+                },
+                onDismiss = { dialog = null },
+            )
+        }
         null -> Unit
     }
 }
