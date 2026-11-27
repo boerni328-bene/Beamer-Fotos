@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.8.1] – 2026-11-27 (versionCode 12)
+
+### Behoben
+- Handy-Seite in Edge/Chrome (Android): „🎵 Musik“ öffnete „No access“ (Mikrofonzugriff verlangt). Jetzt öffnet sich die allgemeine Dateiauswahl ohne Aufnahme.
+
 ## [0.8.0] – 2026-11-27 (versionCode 11)
 
 ### Neu
