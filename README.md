@@ -9,7 +9,7 @@ Gebaut für den XGIMI MoGo 4 Laser, läuft auf jedem Gerät mit Google TV oder A
 1. App **Beamer-Fotos** auf dem Beamer öffnen. Links erscheint ein QR-Code.
 2. Handy ins **selbe WLAN** wie der Beamer.
 3. QR-Code mit der Kamera scannen (iPhone: Kamera-App, Android: Kamera oder Google Lens).
-4. Im Browser Namen oder Anlass eingeben (wird zum Album), **Fotos auswählen** – fertig. Die Fotos landen auf dem Beamer.
+4. Im Browser Namen und auf Wunsch ein Album eingeben, **Fotos auswählen** – fertig. Die Fotos landen auf dem Beamer, getrennt nach Absender.
 
 Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen. Die Upload-Seite dient auch als Fernbedienung für die Diashow.
 
@@ -19,11 +19,15 @@ Es wird keine App auf dem Handy gebraucht. Jeder Gast kann mitmachen. Die Upload
 |---|---|
 | ◀ ▶ | voriges / nächstes Foto |
 | OK | Pause / weiter |
-| ▲ | Menü: Pause, Drehen, Zoom (bis 3×), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
+| ▲ | Menü: Pause, Drehen, Zoom (stufenlos bis 6×), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
 | ▼ | Bildleiste: zu einem beliebigen Foto springen |
 | Zurück | Menü schließen bzw. Diashow beenden |
 
-Vergrößertes Foto: Pfeiltasten verschieben den Ausschnitt, OK zeigt wieder das ganze Foto.
+Zoom: ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben mit den Pfeiltasten (und zurück), Zurück beendet den Zoom.
+
+## Fotos ordnen
+
+Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos). **Auswählen** → Fotos mit OK markieren → **Löschen** oder **Verschieben** (in ein anderes oder neues Album). Außerdem: **Umbenennen** und **Album löschen**.
 
 Weitere Einstellungen (Startseite → Einstellungen): Reihenfolge (Aufnahmezeit, Eingang, Zufall), Hintergrund bei Hochformat, Wiederholen, neue Fotos sofort zeigen (Live-Diashow für Feiern), Speicherort intern oder USB-Stick, neuer QR-Code, alle Fotos löschen.
 

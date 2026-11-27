@@ -26,6 +26,9 @@ object Names {
     /** Name des Albums: der eingegebene Name, sonst „Fotos <Datum>“. */
     fun albumName(raw: String?, today: String): String = clean(raw ?: "").ifEmpty { "Fotos $today" }
 
+    /** Name des Absenders (Handy); leer, wenn keiner angegeben ist. */
+    fun senderName(raw: String?): String = clean(raw ?: "", 40)
+
     /** Dateiname eines Fotos oder null, wenn es kein unterstütztes Bild ist. */
     fun fileName(raw: String?): String? {
         val base = clean(raw?.substringAfterLast('/')?.substringAfterLast('\\') ?: "", 100)

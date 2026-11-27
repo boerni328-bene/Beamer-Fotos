@@ -41,4 +41,13 @@ class NamesTest {
         assertEquals("bild (3).jpg", Names.unique("bild.jpg") { it in vorhanden })
         assertEquals("neu.jpg", Names.unique("neu.jpg") { it in vorhanden })
     }
+
+    @Test
+    fun absenderWirdBereinigt() {
+        assertEquals("Anna", Names.senderName("  Anna "))
+        assertEquals("", Names.senderName(null))
+        assertEquals("_etc_passwd", Names.senderName("/etc/passwd"))
+        assertFalse(Names.senderName("../../geheim").contains("/"))
+        assertTrue(Names.senderName("x".repeat(100)).length <= 40)
+    }
 }

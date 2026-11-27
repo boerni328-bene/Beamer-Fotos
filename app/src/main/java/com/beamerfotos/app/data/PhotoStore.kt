@@ -21,7 +21,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-data class Photo(val file: File, val album: String, val captured: Long, val arrived: Long) {
+/** Ein Foto; [sender] ist der Name des Handys, von dem es kam (leer, wenn unbekannt). */
+data class Photo(val file: File, val album: String, val sender: String, val captured: Long, val arrived: Long) {
     val key: String get() = file.absolutePath
 }
 
@@ -34,9 +35,12 @@ data class Album(val dir: File, val name: String, val location: Location, val ph
     val key: String get() = dir.absolutePath
     val latest: Long = photos.maxOfOrNull { it.arrived } ?: 0L
     val cover: Photo? get() = photos.maxByOrNull { it.arrived }
+    /** Absender mit Anzahl ihrer Fotos, nach Name sortiert („“ = ohne Absender). */
+    val senders: List<Pair<String, Int>> =
+        photos.groupingBy { it.sender }.eachCount().toList().sortedBy { it.first.lowercase() }
 }
 
-data class Arrival(val file: File, val album: String)
+data class Arrival(val file: File, val album: String, val sender: String)
 
 sealed interface SaveResult {
     data class Ok(val file: File) : SaveResult
@@ -95,7 +99,8 @@ class PhotoStore(
         return all.firstOrNull { it.id == settings.state.value.storageId } ?: all.first()
     }
 
-    fun save(albumRaw: String?, nameRaw: String?, length: Long, input: InputStream): SaveResult {
+    /** Speichert ein Foto in <Album>/<Absender>/; ohne Absender direkt im Album. */
+    fun save(albumRaw: String?, senderRaw: String?, nameRaw: String?, length: Long, input: InputStream): SaveResult {
         val name = Names.fileName(nameRaw)
             ?: return SaveResult.Error(415, "Nur Fotos (JPG, PNG, HEIC, WEBP, GIF) werden angenommen.")
         val location = uploadLocation()
@@ -103,7 +108,9 @@ class PhotoStore(
             return SaveResult.Error(507, "Der Speicher am Beamer ist voll.")
         }
         val albumName = Names.albumName(albumRaw, SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY).format(Date()))
-        val dir = File(location.root, albumName)
+        val sender = Names.senderName(senderRaw)
+        val albumDir = File(location.root, albumName)
+        val dir = if (sender.isEmpty()) albumDir else File(albumDir, sender)
         if (!dir.isDirectory && !dir.mkdirs()) return SaveResult.Error(500, "Ordner am Beamer nicht anlegbar.")
 
         val tmp = File(dir, ".${System.nanoTime()}.part")
@@ -127,16 +134,85 @@ class PhotoStore(
             tmp.delete()
             return SaveResult.Error(400, "Übertragung abgebrochen.")
         }
-        _arrivals.tryEmit(Arrival(target, albumName))
+        _arrivals.tryEmit(Arrival(target, albumName, sender))
         requestRefresh()
         return SaveResult.Ok(target)
     }
 
-    fun delete(photo: Photo) {
-        ImageLoader.forget(photo.file)
-        photo.file.delete()
-        settings.forgetRotation(photo.key)
+    fun delete(photo: Photo) = delete(listOf(photo))
+
+    fun delete(photos: Collection<Photo>) {
+        photos.forEach { photo ->
+            ImageLoader.forget(photo.file)
+            photo.file.delete()
+            settings.forgetRotation(photo.key)
+            pruneEmpty(photo.file.parentFile)
+        }
         requestRefresh()
+    }
+
+    /**
+     * Verschiebt Fotos in ein anderes Album (Ordner [targetDir]); der Absender bleibt erhalten.
+     * Liefert die Anzahl der verschobenen Fotos.
+     */
+    fun move(photos: Collection<Photo>, targetDir: File): Int {
+        var moved = 0
+        photos.forEach { photo ->
+            val dir = if (photo.sender.isEmpty()) targetDir else File(targetDir, photo.sender)
+            if (photo.file.parentFile == dir) return@forEach
+            if (!dir.isDirectory && !dir.mkdirs()) return@forEach
+            val target = synchronized(renameLock) {
+                File(dir, Names.unique(photo.file.name) { File(dir, it).exists() })
+            }
+            val ok = photo.file.renameTo(target) || runCatching {
+                // Anderer Speicher (intern ↔ USB): kopieren, dann löschen.
+                photo.file.copyTo(target)
+                target.setLastModified(photo.file.lastModified())
+                photo.file.delete()
+            }.getOrDefault(false)
+            if (ok) {
+                ImageLoader.forget(photo.file)
+                settings.moveRotation(photo.key, target.absolutePath)
+                pruneEmpty(photo.file.parentFile)
+                moved++
+            }
+        }
+        requestRefresh()
+        return moved
+    }
+
+    /** Neuer Ordner für ein Album am selben Speicherort wie [near] (bzw. am Upload-Speicherort). */
+    fun albumDir(nameRaw: String, near: Location?): File? {
+        val name = Names.clean(nameRaw)
+        if (name.isEmpty()) return null
+        return File((near ?: uploadLocation()).root, name)
+    }
+
+    /** Benennt ein Album um; null bei Erfolg, sonst ein Hinweis. */
+    fun renameAlbum(album: Album, newRaw: String): String? {
+        val name = Names.clean(newRaw)
+        if (name.isEmpty()) return "Bitte einen Namen eingeben."
+        if (name == album.name) return null
+        val target = File(album.location.root, name)
+        if (target.exists()) return "Ein Album „$name“ gibt es schon."
+        if (!album.dir.renameTo(target)) return "Umbenennen nicht möglich."
+        val oldPrefix = album.dir.absolutePath
+        album.photos.forEach {
+            ImageLoader.forget(it.file)
+            settings.moveRotation(it.key, target.absolutePath + it.key.removePrefix(oldPrefix))
+        }
+        requestRefresh()
+        return null
+    }
+
+    /** Leere Absender- und Albumordner entfernen (nie den Speicherort selbst). */
+    private fun pruneEmpty(dir: File?) {
+        val roots = locations().map { it.root.absoluteFile }.toSet()
+        var d = dir?.absoluteFile
+        while (d != null && d !in roots && d.isDirectory && d.list()?.isEmpty() == true) {
+            d.delete()
+            d = d.parentFile
+        }
     }
 
     fun deleteAlbum(album: Album) {
@@ -157,11 +233,17 @@ class PhotoStore(
             .filter { it.isDirectory && !it.name.startsWith(".") }
             .map { dir ->
                 val files = dir.listFiles().orEmpty()
-                cleanUpLeftovers(files)
-                val photos = files.filter { it.isFile && Names.isImage(it.name) }.map { photo(it, dir.name) }
+                val photos = photosIn(files, dir.name, "") +
+                    files.filter { it.isDirectory && !it.name.startsWith(".") }
+                        .flatMap { sub -> photosIn(sub.listFiles().orEmpty(), dir.name, sub.name) }
                 Album(dir, dir.name, location, photos)
             }
     }.filter { it.photos.isNotEmpty() }.sortedByDescending { it.latest }
+
+    private fun photosIn(files: Array<out File>, album: String, sender: String): List<Photo> {
+        cleanUpLeftovers(files)
+        return files.filter { it.isFile && Names.isImage(it.name) }.map { photo(it, album, sender) }
+    }
 
     /** Reste abgebrochener Übertragungen (älter als eine Stunde) entfernen. */
     private fun cleanUpLeftovers(files: Array<out File>) {
@@ -169,7 +251,7 @@ class PhotoStore(
         files.filter { it.name.endsWith(".part") && it.lastModified() < limit }.forEach { it.delete() }
     }
 
-    private fun photo(file: File, album: String): Photo {
+    private fun photo(file: File, album: String, sender: String): Photo {
         val modified = file.lastModified()
         val cached = capturedCache[file.absolutePath]
         val captured = if (cached != null && cached.first == modified) {
@@ -177,7 +259,7 @@ class PhotoStore(
         } else {
             (readCaptured(file) ?: modified).also { capturedCache[file.absolutePath] = modified to it }
         }
-        return Photo(file, album, captured, modified)
+        return Photo(file, album, sender, captured, modified)
     }
 
     /** Aufnahmezeit aus den EXIF-Daten (bleibt auch bei iPhone-Fotos erhalten). */

@@ -83,15 +83,23 @@ import com.beamerfotos.app.data.nextInterval
 import com.beamerfotos.app.data.ordered
 import com.beamerfotos.app.image.ImageLoader
 import com.beamerfotos.app.server.RemoteCommand
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import java.util.Locale
 
 private enum class Overlay { NONE, MENU, STRIP }
 
 private const val TRANSITION_MS = 900
+private const val MAX_ZOOM = 6f
+/** Zoom: Faktor e^1,1 ≈ 3× pro Sekunde gedrückter Taste. */
+private const val ZOOM_SPEED = 1.1f
+/** Verschieben: Anteil der Bildbreite pro Sekunde (bei 1×). */
+private const val PAN_SPEED = 0.6f
 
 @Composable
 private fun rememberFull(photo: Photo?, width: Int, height: Int): ImageBitmap? {
@@ -108,14 +116,15 @@ private fun rememberFull(photo: Photo?, width: Int, height: Int): ImageBitmap? {
  * Ist ein Foto vergrößert, verschieben die Pfeiltasten den Ausschnitt und OK zeigt wieder alles.
  */
 @Composable
-fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
+fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sender: String? = null) {
     val settings by graph.settings.state.collectAsState()
     val albums by graph.store.albums.collectAsState()
     val rotations by graph.settings.rotations.collectAsState()
     val url = rememberUploadUrl(graph)
     val scope = rememberCoroutineScope()
 
-    fun source(list: List<Album>): List<Photo> =
+    fun source(list: List<Album>): List<Photo> = sourceAll(list).filter { sender == null || it.sender == sender }
+    fun sourceAll(list: List<Album>): List<Photo> =
         if (albumKey == null) list.flatMap { it.photos } else list.filter { it.key == albumKey }.flatMap { it.photos }
 
     val seed = remember { System.currentTimeMillis() }
@@ -129,10 +138,23 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
     val kbFor = remember { arrayOfNulls<String>(1) }
     var paused by remember { mutableStateOf(false) }
     var zoom by remember { mutableFloatStateOf(1f) }
+    var zoomMode by remember { mutableStateOf(false) }
+    var panMode by remember { mutableStateOf(false) }
+    var zoomDir by remember { mutableIntStateOf(0) }
+    var panDir by remember { mutableStateOf(Offset.Zero) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var panel by remember { mutableStateOf(Overlay.NONE) }
     var pendingNew by remember { mutableIntStateOf(0) }
     val rootFocus = remember { FocusRequester() }
+
+    fun endZoom() {
+        zoomMode = false
+        panMode = false
+        zoomDir = 0
+        panDir = Offset.Zero
+        zoom = 1f
+        pan = Offset.Zero
+    }
 
     fun goTo(target: Int, dir: Int) {
         if (photos.isEmpty()) return
@@ -141,8 +163,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
         previousKb = kenBurns.value
         index = newIndex
         direction = dir
-        zoom = 1f
-        pan = Offset.Zero
+        endZoom()
         if (pendingNew > 0) pendingNew--
         val duration = if (settings.transition == Transition.NONE) 0 else TRANSITION_MS
         scope.launch {
@@ -202,15 +223,15 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             photos.addAll(position, fresh)
             val first = pendingNew == 0
             pendingNew += fresh.size
-            if (first && panel == Overlay.NONE && zoom == 1f) goTo(index + 1, 1)
+            if (first && panel == Overlay.NONE && !zoomMode) goTo(index + 1, 1)
         } else {
             photos.addAll(fresh)
         }
     }
 
     // Weiterschalten nach der Anzeigedauer (nicht bei Pause, offenem Menü oder Vergrößerung).
-    LaunchedEffect(photos.getOrNull(index)?.key, paused, settings.intervalSec, panel, zoom) {
-        if (!paused && settings.intervalSec > 0 && panel == Overlay.NONE && zoom == 1f && photos.size > 1) {
+    LaunchedEffect(photos.getOrNull(index)?.key, paused, settings.intervalSec, panel, zoomMode) {
+        if (!paused && settings.intervalSec > 0 && panel == Overlay.NONE && !zoomMode && photos.size > 1) {
             delay(settings.intervalSec * 1000L + TRANSITION_MS)
             next(manual = false)
         }
@@ -244,9 +265,19 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
 
     LaunchedEffect(panel) { if (panel == Overlay.NONE) runCatching { rootFocus.requestFocus() } }
     BackHandler(enabled = panel != Overlay.NONE) { panel = Overlay.NONE }
-    BackHandler(enabled = panel == Overlay.NONE && zoom > 1f) {
-        zoom = 1f
-        pan = Offset.Zero
+    BackHandler(enabled = panel == Overlay.NONE && zoomMode) { endZoom() }
+
+    // Stufenloser Zoom und Verschieben, solange eine Taste gedrückt ist (Bild für Bild).
+    LaunchedEffect(zoomDir, panDir) {
+        if (zoomDir == 0 && panDir == Offset.Zero) return@LaunchedEffect
+        var last = withFrameNanos { it }
+        while (true) {
+            val now = withFrameNanos { it }
+            val dt = ((now - last) / 1e9f).coerceAtMost(0.1f)
+            last = now
+            if (zoomDir != 0) zoom = (zoom * exp(zoomDir * ZOOM_SPEED * dt)).coerceIn(1f, MAX_ZOOM)
+            panBy(panDir.x * PAN_SPEED * dt, panDir.y * PAN_SPEED * dt)
+        }
     }
 
     val current = photos.getOrNull(index)
@@ -257,31 +288,39 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             .background(Color.Black)
             .focusRequester(rootFocus)
             .onPreviewKeyEvent { e ->
-                if (panel != Overlay.NONE || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (panel != Overlay.NONE) return@onPreviewKeyEvent false
+                if (zoomMode) return@onPreviewKeyEvent zoomKey(
+                    e.key, e.type == KeyEventType.KeyDown, e.nativeKeyEvent.repeatCount == 0,
+                    panMode = panMode,
+                    setZoomDir = { zoomDir = it },
+                    setPanX = { panDir = Offset(it, panDir.y) },
+                    setPanY = { panDir = Offset(panDir.x, it) },
+                    togglePanMode = {
+                        panMode = !panMode
+                        zoomDir = 0
+                        panDir = Offset.Zero
+                    },
+                )
+                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
                     Key.DirectionRight, Key.MediaNext, Key.MediaFastForward -> {
-                        if (zoom > 1f) panBy(-0.1f, 0f) else next(manual = true)
+                        next(manual = true)
                         true
                     }
                     Key.DirectionLeft, Key.MediaPrevious, Key.MediaRewind -> {
-                        if (zoom > 1f) panBy(0.1f, 0f) else prev()
+                        prev()
                         true
                     }
                     Key.DirectionUp -> {
-                        if (zoom > 1f) panBy(0f, 0.1f) else panel = Overlay.MENU
+                        panel = Overlay.MENU
                         true
                     }
                     Key.DirectionDown -> {
-                        if (zoom > 1f) panBy(0f, -0.1f) else if (photos.isNotEmpty()) panel = Overlay.STRIP
+                        if (photos.isNotEmpty()) panel = Overlay.STRIP
                         true
                     }
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.MediaPlayPause, Key.Spacebar -> {
-                        if (zoom > 1f) {
-                            zoom = 1f
-                            pan = Offset.Zero
-                        } else {
-                            togglePause()
-                        }
+                        togglePause()
                         true
                     }
                     Key.MediaPlay -> {
@@ -359,8 +398,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             }
             if (currentImage != null) {
                 val kb = kenBurns.value
-                val z = if (zoom > 1f) zoom else kbZoom(kb)
-                val o = if (zoom > 1f) pan else kbPan(current, kb)
+                val z = if (zoomMode) zoom else kbZoom(kb)
+                val o = if (zoomMode) pan else kbPan(current, kb)
                 drawPhoto(currentImage, rotCurrent, settings.fit, alphaCurrent, slideCurrent, z, o)
             }
         }
@@ -370,16 +409,24 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
         // Einblendungen
         if (settings.showInfo && current != null && panel == Overlay.NONE) {
             Column(Modifier.align(Alignment.BottomStart).padding(28.dp)) {
-                Text(current.album, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = shadowText)
+                Text(
+                    current.album + if (current.sender.isNotEmpty()) "  ·  ${current.sender}" else "",
+                    color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = shadowText,
+                )
                 Text(
                     formatDate(current.captured) + "   ·   ${index + 1} / ${photos.size}",
                     color = Color.White, fontSize = 16.sp, style = shadowText,
                 )
             }
         }
-        if (paused || zoom > 1f) {
+        if (paused || zoomMode) {
+            val factor = String.format(Locale.GERMANY, "%.1f×", zoom)
             Text(
-                if (zoom > 1f) "${zoom.roundToInt()}× · Pfeile verschieben · OK zurück" else "Pause",
+                when {
+                    !zoomMode -> "Pause"
+                    panMode -> "Zoom $factor · Pfeile verschieben · OK: zoomen · Zurück: fertig"
+                    else -> "Zoom $factor · ▲ größer · ▼ kleiner · OK: verschieben · Zurück: fertig"
+                },
                 color = Color.White, fontSize = 18.sp, style = shadowText,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -404,14 +451,13 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             Overlay.MENU -> MenuPanel(
                 graph = graph,
                 paused = paused,
-                zoom = zoom,
                 hasPhoto = current != null,
                 onTogglePause = { togglePause() },
                 onRotate = { current?.let { graph.settings.rotate(it.key) } },
                 onZoom = {
-                    zoom = if (zoom >= 3f) 1f else zoom + 1f
-                    pan = Offset.Zero
-                    if (zoom > 1f) panel = Overlay.NONE
+                    zoomMode = true
+                    panMode = false
+                    panel = Overlay.NONE
                 },
                 onDelete = {
                     current?.let { graph.store.delete(it) }
@@ -432,6 +478,38 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?) {
             Overlay.NONE -> Unit
         }
     }
+}
+
+/**
+ * Tasten im Zoom-Modus. Zoomen: ▲ größer, ▼ kleiner. Verschieben: Pfeile.
+ * OK wechselt zwischen beiden; gedrückt halten wirkt stufenlos, Loslassen stoppt. Zurück bleibt beim BackHandler.
+ */
+private fun zoomKey(
+    key: Key,
+    down: Boolean,
+    firstPress: Boolean,
+    panMode: Boolean,
+    setZoomDir: (Int) -> Unit,
+    setPanX: (Float) -> Unit,
+    setPanY: (Float) -> Unit,
+    togglePanMode: () -> Unit,
+): Boolean = when (key) {
+    Key.DirectionUp, Key.DirectionDown -> {
+        val sign = if (key == Key.DirectionUp) 1 else -1
+        if (panMode) setPanY(if (down) sign.toFloat() else 0f) else setZoomDir(if (down) sign else 0)
+        true
+    }
+    Key.DirectionLeft, Key.DirectionRight -> {
+        // Rechts zeigt mehr vom rechten Bildteil: das Bild wandert nach links.
+        val sign = if (key == Key.DirectionLeft) 1f else -1f
+        if (panMode) setPanX(if (down) sign else 0f)
+        true
+    }
+    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+        if (down && firstPress) togglePanMode()
+        true
+    }
+    else -> false
 }
 
 /** Zeichnet ein Foto: gedreht, ganz oder füllend, mit Zoom, Verschiebung und Deckkraft. */
@@ -497,7 +575,6 @@ private fun EmptyShow(url: String?) {
 private fun MenuPanel(
     graph: AppGraph,
     paused: Boolean,
-    zoom: Float,
     hasPhoto: Boolean,
     onTogglePause: () -> Unit,
     onRotate: () -> Unit,
@@ -527,7 +604,7 @@ private fun MenuPanel(
             )
             if (hasPhoto) {
                 TvButton("Drehen", onClick = onRotate, icon = Icons.Filled.Refresh)
-                TvButton("Zoom ${zoom.roundToInt()}×", onClick = onZoom)
+                TvButton("Zoom", onClick = onZoom)
             }
             TvButton("Dauer: ${intervalLabel(s.intervalSec)}", onClick = {
                 graph.settings.update { it.copy(intervalSec = nextInterval(it.intervalSec)) }

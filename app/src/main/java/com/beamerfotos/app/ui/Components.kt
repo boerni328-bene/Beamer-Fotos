@@ -170,10 +170,12 @@ fun ArrivalBanner(graph: AppGraph, modifier: Modifier = Modifier) {
         var count = 0
         var lastAlbum = ""
         graph.store.arrivals.collectLatest { a ->
-            if (a.album != lastAlbum) count = 0
+            val from = a.album + a.sender
+            if (from != lastAlbum) count = 0
             count++
-            lastAlbum = a.album
-            text = if (count == 1) "Neues Foto in „${a.album}“" else "$count neue Fotos in „${a.album}“"
+            lastAlbum = from
+            val von = if (a.sender.isNotEmpty()) " von ${a.sender}" else ""
+            text = (if (count == 1) "Neues Foto" else "$count neue Fotos") + "$von in „${a.album}“"
             delay(4000)
             text = null
             count = 0

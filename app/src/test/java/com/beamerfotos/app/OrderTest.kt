@@ -8,7 +8,7 @@ import org.junit.Test
 import java.io.File
 
 class OrderTest {
-    private fun photo(name: String, captured: Long, arrived: Long) = Photo(File("/fotos/$name"), "A", captured, arrived)
+    private fun photo(name: String, captured: Long, arrived: Long) = Photo(File("/fotos/$name"), "A", "", captured, arrived)
 
     private val a = photo("a.jpg", captured = 300, arrived = 1)
     private val b = photo("b.jpg", captured = 100, arrived = 3)

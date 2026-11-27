@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.2.0] – 2026-11-27 (versionCode 2)
+
+### Neu
+- **Fotos nach Handy getrennt:** Auf der Handy-Seite gibt es jetzt zwei Felder: Name (von wem die Fotos kommen) und Album. Ohne Album landen die Fotos in „Fotos <heutiges Datum>“, ohne Namen unter dem Gerätetyp (z. B. „iPhone K7Q“). Im Album lässt sich oben nach Absender filtern; die Diashow zeigt dann nur dessen Fotos.
+- **Fotos auswählen:** Im Album „Auswählen“ drücken, Fotos mit OK markieren (oder „Alle“), dann löschen oder in ein anderes bzw. neues Album verschieben.
+- **Album umbenennen.**
+- **Stufenloser Zoom bis 6×:** In der Diashow ▲ → „Zoom“. ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben mit den Pfeiltasten, Zurück beendet den Zoom.
+- Hinweis bei neuen Fotos und Infozeile in der Diashow nennen den Absender.
+
 ## [0.1.0] – 2026-11-26 (versionCode 1)
 
 ### Neu

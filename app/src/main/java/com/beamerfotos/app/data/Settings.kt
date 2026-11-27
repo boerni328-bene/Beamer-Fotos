@@ -98,6 +98,13 @@ class SettingsStore(context: Context) {
         prefs.edit().apply { if (deg == 0) remove(ROT + path) else putInt(ROT + path, deg) }.apply()
     }
 
+    /** Drehung mitnehmen, wenn ein Foto verschoben wird. */
+    fun moveRotation(from: String, to: String) {
+        val deg = _rotations.value[from] ?: return
+        _rotations.value = _rotations.value - from + (to to deg)
+        prefs.edit().remove(ROT + from).putInt(ROT + to, deg).apply()
+    }
+
     fun forgetRotation(path: String) {
         if (path !in _rotations.value) return
         _rotations.value = _rotations.value - path

@@ -128,7 +128,7 @@ class UploadServer(
         if (length <= 0 || length > MAX_BYTES) {
             return Http.json(413, "ok" to false, "error" to "Datei zu groß (höchstens 300 MB).")
         }
-        return when (val result = store.save(r.query["album"], r.query["name"], length, input)) {
+        return when (val result = store.save(r.query["album"], r.query["sender"], r.query["name"], length, input)) {
             is SaveResult.Ok -> Http.json(200, "ok" to true, "name" to result.file.name)
             is SaveResult.Error -> Http.json(result.status, "ok" to false, "error" to result.message)
         }

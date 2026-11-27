@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
 sealed interface Screen {
     data object Home : Screen
     data class AlbumView(val albumKey: String) : Screen
-    data class Show(val albumKey: String?, val startKey: String?) : Screen
+    data class Show(val albumKey: String?, val startKey: String?, val sender: String? = null) : Screen
     data object Settings : Screen
 }
 
@@ -77,13 +77,15 @@ fun App(graph: AppGraph) {
         is Screen.AlbumView -> AlbumScreen(
             graph = graph,
             albumKey = screen.albumKey,
-            onPlay = { startKey -> push(Screen.Show(screen.albumKey, startKey)) },
+            onPlay = { key, startKey, sender -> push(Screen.Show(key, startKey, sender)) },
             onBack = { pop() },
+            onRenamed = { newKey -> stack = stack.dropLast(1) + Screen.AlbumView(newKey) },
         )
         is Screen.Show -> SlideshowScreen(
             graph = graph,
             albumKey = screen.albumKey,
             startKey = screen.startKey,
+            sender = screen.sender,
         )
         Screen.Settings -> SettingsScreen(graph = graph)
     }
