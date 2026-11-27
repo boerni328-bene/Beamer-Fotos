@@ -6,8 +6,8 @@ Stand: 27.11.2026 · `main` = Version 0.6.1 (versionCode 8) · Regeln in `CLAUDE
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
 
 ## Stand
-- Vom Inhaber geprüft: 0.1.0 und 0.2.0. Auftrag am 27.11.: 0.3.0 bis 0.6.0 ohne Rückfrage bauen, danach testet er alles zusammen.
-- Nicht auf dem Gerät geprüft: 0.2.1 bis 0.6.0. Für 0.4.0 gibt es kein eigenes Release, weil der Build am WAKE_LOCK scheiterte; die Änderungen stecken in 0.5.0.
+- Vom Inhaber geprüft: 0.1.0, 0.2.0 und 0.6.1 („Alles klappt“, 27.11.2026). Der Auftrag, 0.3.0 bis 0.6.0 ohne Rückfrage zu bauen, ist erledigt.
+- Für 0.4.0 gibt es kein eigenes Release, weil der Build am WAKE_LOCK scheiterte; die Änderungen stecken in 0.5.0.
 - 0.3.0, Gerät und USB:
   - `data/MediaLibrary` liest Fotos und Videos über den MediaStore (`DATA`-Pfad, „external“ deckt alle Speicher ab) und bildet je Ordner ein Album (`Location.readOnly`, `Photo.readOnly`).
   - `ui/DeviceScreen` mit Berechtigungsabfrage; „Alle zeigen“ läuft über `Screen.Show("media:<root>")`.
@@ -36,7 +36,7 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
   - Versionen bis 0.6.0 ohne Rückfrage.
 
 ## Offen / nächste Schritte
-1. Inhaber testet 0.6.0 auf dem Beamer. Besonders prüfen:
+1. Gemeldete Fehler abwarten. Falls es Probleme gibt, besonders prüfen:
    - Berechtigungsdialoge, USB-Stick (wird er im MediaStore gefunden?), Videos in MKV und AVI.
    - Bildregler mit der Fernbedienung, Radio-Suche und -Wiedergabe, Musik während Videos.
 2. Risiken:
