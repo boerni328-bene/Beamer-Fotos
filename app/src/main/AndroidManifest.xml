@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Kleiner Webserver im WLAN: Handys schicken die Fotos an den Beamer. -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -9,6 +10,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Bringt die Abspiel-Bibliothek Media3 mit; nicht nötig (Bildschirm bleibt ohnehin an, Musik nur in der App). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" tools:node="remove" />
 
     <!-- Läuft auf Beamern und Fernsehern (Google TV / Android TV), ohne Touchscreen. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
