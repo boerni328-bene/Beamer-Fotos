@@ -37,3 +37,6 @@ Zuerst `docs/uebergabe/uebergabe.md` lesen (einzige Übergabedatei, wird übersc
 - `data/PhotoStore.kt` – Speicherorte (intern, USB über `getExternalFilesDirs`, ohne Berechtigung), Alben = Ordner, Speichern, Löschen; `data/Names.kt` – Namen bereinigen (getestet); `data/Settings.kt` – Einstellungen, Zugangscode, Drehungen, Reihenfolge (getestet).
 - `image/ImageLoader.kt` – ImageDecoder (HEIC, EXIF-Drehung), Vorschaubilder mit Cache.
 - `ui/HomeScreen.kt` (QR-Code + Alben), `ui/AlbumScreen.kt`, `ui/SlideshowScreen.kt` (Diashow, Menü, Bildleiste), `ui/SettingsScreen.kt`, `ui/Components.kt`; `MainActivity.kt` (Seitenwahl ohne Navigationsbibliothek, Server läuft zwischen onStart und onStop).
+- `data/MediaLibrary.kt` – Fotos und Videos vom Gerät und USB (MediaStore, nur lesen); `data/Picture.kt` – Bildverbesserung als Farbmatrix (getestet).
+- `music/MusicPlayer.kt` (Musik und Radio für die ganze App), `music/RadioStore` in `Radio.kt` (Sender, Suche über radio-browser.info), `music/MusicLibrary.kt`.
+- `ui/DeviceScreen.kt`, `ui/MusicScreen.kt`, `ui/VideoPlayer.kt` (Media3), `ui/PicturePanel.kt` (Bildregler).
