@@ -36,6 +36,7 @@ data class SlideSettings(
     val saturation: Int = 0,
     val warmth: Int = 0,
     val autoEnhance: Boolean = false,
+    val sharpness: Int = 0,
 )
 
 const val LOCATION_INTERNAL = "intern"
@@ -96,6 +97,7 @@ class SettingsStore(context: Context) {
             .putInt("saettigung", n.saturation)
             .putInt("waerme", n.warmth)
             .putBoolean("auto_verbessern", n.autoEnhance)
+            .putInt("schaerfe", n.sharpness)
             .apply()
     }
 
@@ -154,6 +156,7 @@ class SettingsStore(context: Context) {
             saturation = prefs.getInt("saettigung", 0).coerceIn(Picture.SATURATION),
             warmth = prefs.getInt("waerme", 0).coerceIn(Picture.WARMTH),
             autoEnhance = prefs.getBoolean("auto_verbessern", false),
+            sharpness = prefs.getInt("schaerfe", 0).coerceIn(Picture.SHARPNESS),
         )
     }
 

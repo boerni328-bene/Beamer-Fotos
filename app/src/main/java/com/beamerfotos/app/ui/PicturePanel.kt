@@ -49,6 +49,10 @@ fun PicturePanel(graph: AppGraph, modifier: Modifier = Modifier, requestFocus: B
 
     Column(modifier.padding(horizontal = 24.dp, vertical = 14.dp)) {
         Text("Bild · ▲ ▼ wählen · ◀ ▶ ändern · OK an/aus · Zurück schließt", color = Muted, fontSize = 14.sp)
+        Text(
+            "„Automatisch“: Farbstich, Helligkeit, Kontrast, Farbe und Schärfe je Foto. Bearbeitete Fotos brauchen einen Moment länger.",
+            color = Muted, fontSize = 13.sp,
+        )
         Spacer(Modifier.height(8.dp))
         AdjustRow("Automatisch verbessern", if (s.autoEnhance) "an" else "aus", null, Modifier.focusRequester(first),
             onStep = { set { it.copy(autoEnhance = !it.autoEnhance) } },
@@ -65,9 +69,11 @@ fun PicturePanel(graph: AppGraph, modifier: Modifier = Modifier, requestFocus: B
             else -> "0"
         }, fraction(s.warmth, Picture.WARMTH),
             onStep = { d -> set { it.copy(warmth = (it.warmth + d * 5).coerceIn(Picture.WARMTH)) } })
+        AdjustRow("Schärfe", if (s.sharpness == 0) "aus" else "${s.sharpness}", fraction(s.sharpness, Picture.SHARPNESS),
+            onStep = { d -> set { it.copy(sharpness = (it.sharpness + d * 10).coerceIn(Picture.SHARPNESS)) } })
         AdjustRow("Zurücksetzen", if (Picture.isNeutral(s)) "–" else "OK drücken", null,
             onStep = {},
-            onClick = { set { it.copy(brightness = 0, contrast = 0, saturation = 0, warmth = 0, autoEnhance = false) } })
+            onClick = { set { it.copy(brightness = 0, contrast = 0, saturation = 0, warmth = 0, autoEnhance = false, sharpness = 0) } })
     }
 }
 

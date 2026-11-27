@@ -3,6 +3,13 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.7.0] – 2026-11-27 (versionCode 9)
+
+### Neu
+- **„Automatisch verbessern“ deutlich umfassender:** je Foto Weißabgleich (Farbstich weg, Stimmung bleibt zur Hälfte), Tonwertkorrektur, Aufhellen zu dunkler bzw. Abdunkeln zu heller Fotos, kräftigere blasse Farben und Schärfen. Die Fotos werden dafür beim Laden berechnet (dauert einen Moment), die Dateien selbst bleiben unverändert.
+- **Schärfe** als eigener Regler (Bild-Menü und Einstellungen), auch ohne „Automatisch“.
+- **Musik im Diashow-Menü:** ▲ → Menüpunkt „Musik“: ▲ ▼ schaltet durch die gemerkten Radiosender (bei eigener Musik durch die Stücke), OK hält an bzw. spielt weiter; ohne Musik startet OK den ersten Sender.
+
 ## [0.6.1] – 2026-11-27 (versionCode 8)
 
 ### Behoben

@@ -42,7 +42,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -89,6 +88,7 @@ import com.beamerfotos.app.data.nextInterval
 import com.beamerfotos.app.data.ordered
 import com.beamerfotos.app.image.ImageLoader
 import com.beamerfotos.app.server.RemoteCommand
+import com.beamerfotos.app.music.switchStation
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -108,10 +108,11 @@ private const val ZOOM_SPEED = 1.1f
 private const val PAN_SPEED = 0.6f
 
 @Composable
-private fun rememberFull(photo: Photo?, width: Int, height: Int): ImageBitmap? {
-    val state = remember(photo?.key) { mutableStateOf(photo?.let { ImageLoader.cachedFull(it.file) }) }
-    LaunchedEffect(photo?.key) {
-        if (state.value == null && photo != null) state.value = ImageLoader.full(photo.file, width, height)
+private fun rememberFull(photo: Photo?, width: Int, height: Int, auto: Boolean, sharpness: Int): ImageBitmap? {
+    val state = remember(photo?.key) { mutableStateOf(photo?.let { ImageLoader.cachedFull(it.file, auto, sharpness) }) }
+    // Ändert sich die Verbesserung, bleibt das bisherige Bild stehen, bis das neue berechnet ist.
+    LaunchedEffect(photo?.key, auto, sharpness) {
+        if (photo != null) ImageLoader.full(photo.file, width, height, auto, sharpness)?.let { state.value = it }
     }
     return state.value
 }
@@ -157,7 +158,6 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     var pendingNew by remember { mutableIntStateOf(0) }
     val rootFocus = remember { FocusRequester() }
     val videoControl = remember { VideoControl() }
-    val levels = remember { mutableStateMapOf<String, Pair<Float, Float>>() }
     var videoError by remember { mutableStateOf<String?>(null) }
 
     fun endZoom() {
@@ -363,12 +363,16 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
         val heightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
-        val currentImage = rememberFull(current, widthPx, heightPx)
-        val previousImage = rememberFull(previous, widthPx, heightPx)
+        val auto = settings.autoEnhance
+        val sharpness = settings.sharpness
+        val currentImage = rememberFull(current, widthPx, heightPx, auto, sharpness)
+        val previousImage = rememberFull(previous, widthPx, heightPx, auto, sharpness)
 
-        // Nächstes Foto schon vorab laden.
-        LaunchedEffect(index, photos.size) {
-            photos.getOrNull((index + 1).mod(max(1, photos.size)))?.let { ImageLoader.full(it.file, widthPx, heightPx) }
+        // Nächstes Foto schon vorab laden (und verbessern).
+        LaunchedEffect(index, photos.size, auto, sharpness) {
+            photos.getOrNull((index + 1).mod(max(1, photos.size)))?.let {
+                ImageLoader.full(it.file, widthPx, heightPx, auto, sharpness)
+            }
         }
 
         val p = transition.value
@@ -411,13 +415,8 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
 
         // Bildverbesserung: Farbmatrix je Foto (Videos bleiben unverändert).
         fun filterFor(photo: Photo?): ColorFilter? {
-            if (photo == null || photo.isVideo || Picture.isNeutral(settings)) return null
-            return ColorFilter.colorMatrix(ColorMatrix(Picture.matrix(settings, levels[photo.key])))
-        }
-        LaunchedEffect(current?.key, settings.autoEnhance) {
-            if (settings.autoEnhance && current != null && !current.isVideo && current.key !in levels) {
-                ImageLoader.levels(current.file)?.let { levels[current.key] = it }
-            }
+            if (photo == null || photo.isVideo || Picture.slidersNeutral(settings)) return null
+            return ColorFilter.colorMatrix(ColorMatrix(Picture.matrix(settings)))
         }
 
         Canvas(Modifier.fillMaxSize()) {
@@ -658,9 +657,15 @@ private fun MenuPanel(
     modifier: Modifier = Modifier,
 ) {
     val s by graph.settings.state.collectAsState()
-    val music by graph.music.state.collectAsState()
     val first = remember { FocusRequester() }
     var confirmDelete by remember { mutableStateOf(false) }
+    var musicHint by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(musicHint) {
+        if (musicHint != null) {
+            delay(3000)
+            musicHint = null
+        }
+    }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     Column(
         modifier
@@ -668,7 +673,7 @@ private fun MenuPanel(
             .background(Color(0xCC0F1826))
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        Text("◀ ▶ auswählen · OK ändern · Zurück schließt", color = Muted, fontSize = 14.sp)
+        Text(musicHint ?: "◀ ▶ auswählen · OK ändern · Zurück schließt · bei „Musik“: ▲ ▼ Sender wechseln", color = if (musicHint != null) Gold else Muted, fontSize = 14.sp)
         Spacer(Modifier.height(10.dp))
         Row(
             Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp),
@@ -686,11 +691,7 @@ private fun MenuPanel(
                 graph.settings.update { it.copy(intervalSec = nextInterval(it.intervalSec)) }
             })
             TvButton("Bild", onClick = onPicture)
-            val track = music.current
-            if (track != null) {
-                TvButton(if (music.playing) "Musik: Pause" else "Musik: weiter", onClick = { graph.music.toggle() })
-                if (!track.isRadio) TvButton("Nächstes Stück", onClick = { graph.music.next() })
-            }
+            MusicMenuButton(graph, onHint = { musicHint = it })
             TvButton("Übergang: ${s.transition.label}", onClick = {
                 graph.settings.update { it.copy(transition = it.transition.cycle()) }
             })
@@ -759,4 +760,36 @@ private fun Filmstrip(
             }
         }
     }
+}
+
+/**
+ * Menüpunkt Musik: OK = Pause/Weiter (ohne Musik startet der erste Sender),
+ * ▲ ▼ = voriger/nächster gemerkter Radiosender (bei eigener Musik: Stück).
+ */
+@Composable
+private fun MusicMenuButton(graph: AppGraph, onHint: (String) -> Unit) {
+    val music by graph.music.state.collectAsState()
+    val stations by graph.radio.stations.collectAsState()
+    val scope = rememberCoroutineScope()
+    val track = music.current
+    val label = when {
+        track == null -> "Musik: Radio"
+        music.loading -> "Musik: verbinde …"
+        else -> (if (music.playing) "♪ " else "Pause · ") + track.title.take(26)
+    }
+    fun switch(delta: Int) {
+        scope.launch { onHint(graph.music.switchStation(stations, delta)) }
+    }
+    TvButton(
+        label,
+        onClick = { if (track == null) switch(1) else graph.music.toggle() },
+        modifier = Modifier.onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (e.key) {
+                Key.DirectionUp -> { switch(-1); true }
+                Key.DirectionDown -> { switch(1); true }
+                else -> false
+            }
+        },
+    )
 }

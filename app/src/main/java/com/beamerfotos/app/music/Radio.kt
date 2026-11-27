@@ -1,6 +1,7 @@
 package com.beamerfotos.app.music
 
 import android.content.Context
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,4 +92,27 @@ class RadioStore(context: Context) {
             }
         }
     }
+}
+
+/** Sender abspielen (Playlist-Adressen vorher auflösen). */
+suspend fun MusicPlayer.playStation(station: Station) {
+    val url = RadioStore.resolve(station.url)
+    play(listOf(Track(station.name, station.info.ifEmpty { "Radio" }, url.toUri(), isRadio = true)))
+}
+
+/**
+ * Zum nächsten ([delta] = 1) oder vorigen (−1) gemerkten Sender schalten.
+ * Läuft eigene Musik, wechselt stattdessen das Stück. Liefert einen Hinweis für den Bildschirm.
+ */
+suspend fun MusicPlayer.switchStation(stations: List<Station>, delta: Int): String {
+    val current = state.value.current
+    if (current != null && !current.isRadio) {
+        if (delta > 0) next() else previous()
+        return if (delta > 0) "Nächstes Stück" else "Voriges Stück"
+    }
+    if (stations.isEmpty()) return "Noch keine Radiosender gemerkt (Startseite → Musik)."
+    val index = stations.indexOfFirst { current?.isRadio == true && it.name == current.title }
+    val target = stations[if (index < 0) (if (delta > 0) 0 else stations.size - 1) else (index + delta).mod(stations.size)]
+    playStation(target)
+    return target.name
 }

@@ -7,10 +7,9 @@ import android.graphics.ImageDecoder
 import android.media.MediaMetadataRetriever
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.beamerfotos.app.data.Names
-import com.beamerfotos.app.data.Picture
+import com.beamerfotos.app.data.Enhance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -41,7 +40,6 @@ object ImageLoader {
 
     fun cachedThumb(f: File): ImageBitmap? = thumbs.get(key(f))
 
-    fun cachedFull(f: File): ImageBitmap? = fulls.get(key(f))
 
     suspend fun thumb(f: File): ImageBitmap? = withContext(Dispatchers.IO) {
         thumbLimit.withPermit {
@@ -57,32 +55,48 @@ object ImageLoader {
         }
     }
 
-    suspend fun full(f: File, screenWidth: Int, screenHeight: Int): ImageBitmap? = withContext(Dispatchers.IO) {
-        fullLimit.withPermit {
-            val k = key(f)
-            fulls.get(k) ?: decode(f, max(screenWidth, screenHeight), min(screenWidth, screenHeight), software = false)
-                ?.asImageBitmap()?.also { fulls.put(k, it) }
-        }
-    }
+    private fun fullKey(f: File, auto: Boolean, sharpness: Int) = key(f) + "|" + auto + "|" + sharpness
 
-    private val levelCache = LruCache<String, Pair<Float, Float>>(500)
+    fun cachedFull(f: File, auto: Boolean, sharpness: Int): ImageBitmap? = fulls.get(fullKey(f, auto, sharpness))
 
-    /** Dunkelster und hellster Wert des Fotos für „Automatisch verbessern“ (aus dem Vorschaubild). */
-    suspend fun levels(f: File): Pair<Float, Float>? {
-        val k = key(f)
-        levelCache.get(k)?.let { return it }
-        val bitmap = thumb(f)?.asAndroidBitmap() ?: return null
-        return withContext(Dispatchers.Default) {
-            runCatching {
-                val pixels = IntArray(bitmap.width * bitmap.height)
-                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-                Picture.levels(pixels)
-            }.getOrNull()?.also { levelCache.put(k, it) }
+    /**
+     * Foto in Bildschirmgröße. Mit „Automatisch verbessern“ oder „Schärfe“ wird es an den Pixeln bearbeitet
+     * (Weißabgleich, Tonwerte, Schärfen) – das dauert auf dem Beamer einen Moment, daher im Hintergrund.
+     */
+    suspend fun full(f: File, screenWidth: Int, screenHeight: Int, auto: Boolean = false, sharpness: Int = 0): ImageBitmap? =
+        withContext(Dispatchers.IO) {
+            fullLimit.withPermit {
+                val k = fullKey(f, auto, sharpness)
+                fulls.get(k) ?: run {
+                    val process = !Names.isVideo(f.name) && Enhance.needed(auto, sharpness)
+                    val bitmap = decode(f, max(screenWidth, screenHeight), min(screenWidth, screenHeight), software = process)
+                        ?: return@run null
+                    val result = if (process) enhanced(bitmap, auto, sharpness) else bitmap
+                    result.asImageBitmap().also { fulls.put(k, it) }
+                }
+            }
         }
+
+    private fun enhanced(source: Bitmap, auto: Boolean, sharpness: Int): Bitmap = try {
+        val bitmap = if (source.config == Bitmap.Config.ARGB_8888 && source.isMutable) source
+        else source.copy(Bitmap.Config.ARGB_8888, true)
+        val w = bitmap.width
+        val h = bitmap.height
+        val pixels = IntArray(w * h)
+        bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+        Enhance.apply(pixels, w, h, auto, sharpness)
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        // Zum Zeichnen in den Grafikspeicher (schneller); geht das nicht, bleibt das normale Bild.
+        bitmap.copy(Bitmap.Config.HARDWARE, false) ?: bitmap
+    } catch (e: Exception) {
+        source
+    } catch (e: OutOfMemoryError) {
+        source
     }
 
     fun forget(f: File) {
         thumbs.remove(key(f))
+        fulls.snapshot().keys.filter { it.startsWith(key(f)) }.forEach { fulls.remove(it) }
         fulls.remove(key(f))
     }
 
@@ -117,7 +131,10 @@ object ImageLoader {
             val h = info.size.height
             val ratio = min(max(w, h).toFloat() / longSide, min(w, h).toFloat() / shortSide)
             decoder.setTargetSampleSize(max(1, ratio.toInt()))
-            if (software) decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            if (software) {
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                decoder.isMutableRequired = true
+            }
             // Teilweise beschädigte Fotos trotzdem zeigen statt abzubrechen.
             decoder.setOnPartialImageListener { true }
         }

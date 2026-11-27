@@ -39,12 +39,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import com.beamerfotos.app.AppGraph
 import com.beamerfotos.app.music.MusicFolder
 import com.beamerfotos.app.music.RadioStore
 import com.beamerfotos.app.music.Station
-import com.beamerfotos.app.music.Track
+import com.beamerfotos.app.music.playStation
 import kotlinx.coroutines.launch
 
 /**
@@ -73,10 +72,7 @@ fun MusicScreen(graph: AppGraph) {
     LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
 
     fun playStation(station: Station) {
-        scope.launch {
-            val url = RadioStore.resolve(station.url)
-            graph.music.play(listOf(Track(station.name, station.info.ifEmpty { "Radio" }, url.toUri(), isRadio = true)))
-        }
+        scope.launch { graph.music.playStation(station) }
     }
 
     LazyColumn(

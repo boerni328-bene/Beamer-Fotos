@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.6.1 (versionCode 8) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.7.0 (versionCode 9) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -19,6 +19,11 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
 - 0.5.0, Bild verbessern:
   - Die Farbmatrix steckt in `data/Picture` (getestet). „Automatisch“ arbeitet mit Grenzwerten aus dem Vorschaubild (`ImageLoader.levels`).
   - Regler in `ui/PicturePanel`, erreichbar über Menü → Bild und über die Einstellungen. Gilt für alle Fotos, nicht für Videos.
+- 0.7.0:
+  - „Automatisch verbessern“ rechnet jetzt an den Pixeln (`data/Enhance`, getestet): halber Grauwelt-Weißabgleich, Tonwerte (Streckung höchstens 2×), Gamma Richtung 45 %, Lebendigkeit, Unscharfmaskierung. Dazu der neue Regler „Schärfe“.
+  - Berechnet wird in `ImageLoader.full(…, auto, sharpness)` mit Software-Decode, das Ergebnis wird als HARDWARE-Bitmap kopiert. Der Cache-Schlüssel enthält die Einstellungen. Die Farbmatrix (`Picture.matrix`) deckt nur noch die Regler ab.
+  - Menüpunkt Musik in der Diashow (`MusicMenuButton`): ▲▼ ruft `switchStation` auf (Radio.kt), OK schaltet Pause/Weiter.
+  - Offen: Rechenzeit auf dem Beamer prüfen (1080p, etwa 0,1–0,5 s je Foto erwartet).
 - 0.6.1: Handy-Seite mit getrennten Auswahlknöpfen (Fotos/Videos/Musik). Gemischtes `accept` löste in Firefox „No camera access“ aus.
 - 0.6.0, Musik:
   - `music/MusicPlayer`: ein ExoPlayer für die ganze App. Er pausiert in `onStop` und läuft in `onStart` weiter; bei Videos geht die Lautstärke auf 0 (`duck`).
