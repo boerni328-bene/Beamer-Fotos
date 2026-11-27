@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.10.1] – 2026-11-27 (versionCode 16)
+
+### Test
+- Einstellungen → „USB-Stick freigeben (Test)“: öffnet die Ordnerauswahl von Android und prüft, ob die App nach der Freigabe eine Testdatei auf dem Stick anlegen kann. Hintergrund: Google TV lässt Apps auf USB-Sticks nur lesen; das Ergebnis entscheidet, wie das Speichern auf dem Stick umgebaut wird.
+
 ## [0.10.0] – 2026-11-27 (versionCode 15)
 
 ### Neu
