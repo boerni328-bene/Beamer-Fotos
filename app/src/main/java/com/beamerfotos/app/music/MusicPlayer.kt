@@ -66,10 +66,10 @@ class MusicPlayer(private val context: Context) {
                     error = if (radio) "Sender nicht erreichbar." else "Stück lässt sich nicht abspielen.",
                 )
                 // Bei einer Liste das nächste Stück versuchen.
-                if (!radio && player.hasNextMediaItem()) {
-                    player.seekToNextMediaItem()
-                    player.prepare()
-                    player.play()
+                if (!radio && p.hasNextMediaItem()) {
+                    p.seekToNextMediaItem()
+                    p.prepare()
+                    p.play()
                 }
             }
 
