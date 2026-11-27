@@ -34,6 +34,10 @@ Im Album oben nach Absender filtern (die Diashow zeigt dann nur dessen Fotos); m
 
 MP4, MOV, MKV und AVI (auch WEBM, 3GP) lassen sich wie Fotos senden (bis 8 GB je Datei) oder vom Beamer und USB-Stick zeigen. In der Diashow läuft jedes Video bis zum Ende mit Ton. Ob ein Video abspielbar ist, hängt von den Decodern des Beamers ab (übliche Handy-Videos in H.264/H.265 gehen); nicht abspielbare werden mit einem Hinweis übersprungen.
 
+## Musik und Radio
+
+Startseite → **Musik**: Radiosender suchen (freies Verzeichnis radio-browser.info, nur auf Knopfdruck) und merken, eigene Musik abspielen (über die Handy-Seite gesendet oder auf Beamer und USB-Stick). Die Musik läuft mit oder ohne Diashow, solange die App geöffnet ist, und pausiert bei Videos. Auf der Handy-Seite lassen sich Sender mit Name und Stream-Adresse hinzufügen und die Musik steuern.
+
 ## Fotos vom Beamer und vom USB-Stick
 
 Startseite → **Gerät & USB-Stick**: alle Fotos, die schon auf dem Beamer oder einem eingesteckten USB-Stick liegen, nach Ordnern. Beim ersten Mal fragt der Beamer nach der Berechtigung „Fotos und Videos“. Die Fotos werden nur gezeigt, nie verändert. Mit **Auswählen → In Album kopieren** lassen sie sich in ein eigenes Album übernehmen.

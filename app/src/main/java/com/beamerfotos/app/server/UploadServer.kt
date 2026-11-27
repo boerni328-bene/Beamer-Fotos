@@ -4,6 +4,8 @@ import android.content.Context
 import com.beamerfotos.app.data.PhotoStore
 import com.beamerfotos.app.data.SaveResult
 import com.beamerfotos.app.data.SettingsStore
+import com.beamerfotos.app.music.MusicPlayer
+import com.beamerfotos.app.music.RadioStore
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,6 +33,8 @@ class UploadServer(
     private val context: Context,
     private val store: PhotoStore,
     private val settings: SettingsStore,
+    private val music: MusicPlayer,
+    private val radio: RadioStore,
 ) {
     private val _commands = MutableSharedFlow<RemoteCommand>(extraBufferCapacity = 16)
     val commands: SharedFlow<RemoteCommand> = _commands
@@ -114,10 +118,13 @@ class UploadServer(
                     "free" to location.free(),
                     "location" to location.label,
                     "albums" to store.albums.value.map { it.name }.distinct(),
+                    "music" to (music.state.value.current?.let { (if (music.state.value.playing) "♪ " else "Pause · ") + it.title } ?: ""),
                 )
             }
             (r.method == "PUT" || r.method == "POST") && r.path == "/api/upload" -> upload(r, input)
             r.method == "POST" && r.path == "/api/control" -> control(r)
+            r.method == "POST" && r.path == "/api/radio" -> radio.add(r.query["name"], r.query["url"])
+                ?.let { Http.json(400, "ok" to false, "error" to it) } ?: Http.json(200, "ok" to true)
             else -> Http.json(404, "ok" to false, "error" to "Nicht gefunden")
         }
     }
@@ -140,6 +147,8 @@ class UploadServer(
             "prev" -> RemoteCommand.PREV
             "toggle" -> RemoteCommand.TOGGLE
             "start" -> RemoteCommand.START
+            "music" -> { music.toggle(); return Http.json(200, "ok" to true) }
+            "music_next" -> { music.next(); return Http.json(200, "ok" to true) }
             else -> return Http.json(400, "ok" to false, "error" to "Unbekannter Befehl")
         }
         _commands.tryEmit(command)

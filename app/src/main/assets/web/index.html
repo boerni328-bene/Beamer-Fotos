@@ -54,7 +54,7 @@
 
     <div class="card">
       <button class="big" id="waehlen">📷 Fotos oder Videos auswählen</button>
-      <input type="file" id="dateien" accept="image/*,video/*" multiple hidden>
+      <input type="file" id="dateien" accept="image/*,video/*,audio/*" multiple hidden>
       <div id="fortschritt" class="hidden">
         <div class="bar"><div id="balken"></div></div>
         <div class="status" id="status"></div>
@@ -75,6 +75,21 @@
         <button data-cmd="start">▶ Diashow starten</button>
       </div>
     </div>
+
+    <div class="card">
+      <label>Musik am Beamer</label>
+      <div class="status" id="musik">–</div>
+      <div class="row" style="margin-top:8px">
+        <button data-cmd="music" aria-label="Musik Pause oder weiter">⏯ Musik</button>
+        <button data-cmd="music_next" aria-label="Nächstes Stück">⏭ Nächstes</button>
+      </div>
+      <p class="hint">Musikstücke (MP3, M4A, FLAC …) lassen sich oben wie Fotos senden; sie erscheinen am Beamer unter „Musik“.</p>
+      <label for="sendername" style="margin-top:14px">Radiosender hinzufügen</label>
+      <input type="text" id="sendername" maxlength="60" placeholder="Name, z. B. Lieblingssender" autocomplete="off">
+      <input type="text" id="senderurl" maxlength="500" placeholder="Adresse des Streams (http…)" autocomplete="off" inputmode="url" style="margin-top:8px">
+      <div class="row" style="margin-top:10px"><button id="senderdazu">＋ Sender speichern</button></div>
+      <div class="status" id="senderstatus"></div>
+    </div>
   </div>
 </main>
 
@@ -91,9 +106,10 @@
   var bar = document.getElementById("balken");
   var statusLine = document.getElementById("status");
   var errorList = document.getElementById("fehlerliste");
-  var IMAGE = /\.(jpe?g|png|heic|heif|webp|gif|bmp|mp4|m4v|mov|mkv|avi|webm|3gp)$/i;
+  var IMAGE = /\.(jpe?g|png|heic|heif|webp|gif|bmp|mp4|m4v|mov|mkv|avi|webm|3gp|mp3|m4a|aac|flac|ogg|oga|opus|wav)$/i;
   var EXT = { "image/jpeg": ".jpg", "image/png": ".png", "image/heic": ".heic", "image/heif": ".heif", "image/webp": ".webp", "image/gif": ".gif",
-    "video/mp4": ".mp4", "video/quicktime": ".mov", "video/x-matroska": ".mkv", "video/x-msvideo": ".avi", "video/avi": ".avi", "video/webm": ".webm", "video/3gpp": ".3gp" };
+    "video/mp4": ".mp4", "video/quicktime": ".mov", "video/x-matroska": ".mkv", "video/x-msvideo": ".avi", "video/avi": ".avi", "video/webm": ".webm", "video/3gpp": ".3gp",
+    "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/x-m4a": ".m4a", "audio/aac": ".aac", "audio/flac": ".flac", "audio/ogg": ".ogg", "audio/wav": ".wav", "audio/x-wav": ".wav" };
 
   var queue = [], failed = [], busy = false, sentTotal = 0, batchDone = 0, batchSize = 0;
 
@@ -146,6 +162,7 @@
       if (!info) return;
       document.getElementById("verbindung").textContent =
         "Verbunden mit dem Beamer · " + info.location + " · " + gb(info.free) + " frei";
+      document.getElementById("musik").textContent = info.music || "Keine Musik";
       var list = document.getElementById("alben");
       list.textContent = "";
       (info.albums || []).forEach(function (a) {
@@ -160,7 +177,7 @@
 
   function fileName(file) {
     var n = file.name || "foto";
-    if (!IMAGE.test(n)) n = n.replace(/\.[^.]*$/, "") + (EXT[file.type] || (/^video\//.test(file.type) ? ".mp4" : ".jpg"));
+    if (!IMAGE.test(n)) n = n.replace(/\.[^.]*$/, "") + (EXT[file.type] || (/^video\//.test(file.type) ? ".mp4" : /^audio\//.test(file.type) ? ".mp3" : ".jpg"));
     return n;
   }
 
@@ -272,11 +289,33 @@
     b.addEventListener("click", function () {
       fetch(api("/api/control?cmd=" + b.getAttribute("data-cmd")), { method: "POST" }).then(function (r) {
         if (r.status === 403) denied();
+        // Musikanzeige kurz danach auffrischen.
+        if (/^music/.test(b.getAttribute("data-cmd"))) setTimeout(checkConnection, 1200);
       }).catch(function () {});
     });
   });
 
+  document.getElementById("senderdazu").addEventListener("click", function () {
+    var name = document.getElementById("sendername").value.trim();
+    var url = document.getElementById("senderurl").value.trim();
+    var out = document.getElementById("senderstatus");
+    if (!/^https?:\/\//i.test(url)) {
+      out.className = "status err";
+      out.textContent = "Die Adresse muss mit http:// oder https:// beginnen.";
+      return;
+    }
+    fetch(api("/api/radio?name=" + encodeURIComponent(name) + "&url=" + encodeURIComponent(url)), { method: "POST" })
+      .then(function (r) { if (r.status === 403) denied(); return r.json(); })
+      .then(function (j) {
+        out.className = j.ok ? "status ok" : "status err";
+        out.textContent = j.ok ? "✓ Gespeichert. Am Beamer unter „Musik“ → Radio." : (j.error || "Fehler");
+        if (j.ok) { document.getElementById("sendername").value = ""; document.getElementById("senderurl").value = ""; }
+      })
+      .catch(function () { out.className = "status err"; out.textContent = "Beamer nicht erreichbar."; });
+  });
+
   checkConnection();
+  setInterval(checkConnection, 15000);
 })();
 </script>
 </body>

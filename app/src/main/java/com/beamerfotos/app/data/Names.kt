@@ -12,6 +12,10 @@ object Names {
 
     fun isVideo(name: String): Boolean = !name.startsWith(".") && extensionOf(name) in videoExtensions
 
+    val audioExtensions = setOf("mp3", "m4a", "aac", "flac", "ogg", "oga", "opus", "wav")
+
+    fun isAudio(name: String): Boolean = !name.startsWith(".") && extensionOf(name) in audioExtensions
+
     /** Foto oder Video, das die App zeigen kann. */
     fun isMedia(name: String): Boolean = isImage(name) || isVideo(name)
 
@@ -36,10 +40,10 @@ object Names {
     /** Name des Absenders (Handy); leer, wenn keiner angegeben ist. */
     fun senderName(raw: String?): String = clean(raw ?: "", 40)
 
-    /** Dateiname eines Fotos oder Videos; null, wenn das Format nicht unterstützt wird. */
+    /** Dateiname eines Fotos, Videos oder Musikstücks; null, wenn das Format nicht unterstützt wird. */
     fun fileName(raw: String?): String? {
         val base = clean(raw?.substringAfterLast('/')?.substringAfterLast('\\') ?: "", 100)
-        return if (isMedia(base)) base else null
+        return if (isMedia(base) || isAudio(base)) base else null
     }
 
     /** Hängt „(2)“, „(3)“ … an, bis der Name frei ist. */

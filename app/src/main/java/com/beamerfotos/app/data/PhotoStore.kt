@@ -72,6 +72,10 @@ class PhotoStore(
     private val _albums = MutableStateFlow<List<Album>>(emptyList())
     val albums: StateFlow<List<Album>> = _albums
 
+    private val _musicChanged = MutableStateFlow(0L)
+    /** Zeitpunkt der letzten gesendeten Musik (Musikseite liest dann neu ein). */
+    val musicChanged: StateFlow<Long> = _musicChanged
+
     private val _arrivals = MutableSharedFlow<Arrival>(extraBufferCapacity = 64)
     /** Jedes neu empfangene Foto (für Hinweise auf dem Bildschirm). */
     val arrivals: SharedFlow<Arrival> = _arrivals
@@ -119,7 +123,7 @@ class PhotoStore(
     /** Speichert ein Foto in <Album>/<Absender>/; ohne Absender direkt im Album. */
     fun save(albumRaw: String?, senderRaw: String?, nameRaw: String?, length: Long, input: InputStream): SaveResult {
         val name = Names.fileName(nameRaw)
-            ?: return SaveResult.Error(415, "Nur Fotos (JPG, PNG, HEIC, WEBP, GIF) und Videos (MP4, MOV, MKV, AVI) werden angenommen.")
+            ?: return SaveResult.Error(415, "Nur Fotos (JPG, PNG, HEIC …), Videos (MP4, MOV, MKV, AVI) und Musik (MP3, M4A, FLAC …) werden angenommen.")
         val location = uploadLocation()
         if (location.free() < length + RESERVE_BYTES) {
             return SaveResult.Error(507, "Der Speicher am Beamer ist voll.")
@@ -127,7 +131,12 @@ class PhotoStore(
         val albumName = Names.albumName(albumRaw, SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY).format(Date()))
         val sender = Names.senderName(senderRaw)
         val albumDir = File(location.root, albumName)
-        val dir = if (sender.isEmpty()) albumDir else File(albumDir, sender)
+        val isMusic = Names.isAudio(name)
+        val dir = when {
+            isMusic -> musicDir(location)
+            sender.isEmpty() -> albumDir
+            else -> File(albumDir, sender)
+        }
         if (!dir.isDirectory && !dir.mkdirs()) return SaveResult.Error(500, "Ordner am Beamer nicht anlegbar.")
 
         val tmp = File(dir, ".${System.nanoTime()}.part")
@@ -150,6 +159,10 @@ class PhotoStore(
         } catch (e: IOException) {
             tmp.delete()
             return SaveResult.Error(400, "Übertragung abgebrochen.")
+        }
+        if (isMusic) {
+            _musicChanged.value = System.currentTimeMillis()
+            return SaveResult.Ok(target)
         }
         _arrivals.tryEmit(Arrival(target, albumName, sender))
         requestRefresh()
@@ -355,8 +368,11 @@ class PhotoStore(
         null
     }
 
-    private companion object {
+    companion object {
+        /** Gesendete Musik liegt neben den Fotos: <Speicher>/Musik. */
+        fun musicDir(location: Location): File = File(location.root.parentFile ?: location.root, "Musik")
+
         /** So viel bleibt immer frei, damit der Beamer selbst nicht voll läuft. */
-        const val RESERVE_BYTES = 200L * 1024 * 1024
+        private const val RESERVE_BYTES = 200L * 1024 * 1024
     }
 }

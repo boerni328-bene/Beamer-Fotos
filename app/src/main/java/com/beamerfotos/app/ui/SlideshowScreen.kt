@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -437,6 +438,10 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         // Videos: über dem Standbild abspielen, sobald der Übergang fertig ist; am Ende weiter.
         if (current != null && current.isVideo && p >= 1f) {
             key(current.key) {
+                DisposableEffect(Unit) {
+                    graph.music.duck(true)
+                    onDispose { graph.music.duck(false) }
+                }
                 VideoPlayer(
                     file = current.file,
                     paused = paused,
@@ -653,6 +658,7 @@ private fun MenuPanel(
     modifier: Modifier = Modifier,
 ) {
     val s by graph.settings.state.collectAsState()
+    val music by graph.music.state.collectAsState()
     val first = remember { FocusRequester() }
     var confirmDelete by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -680,6 +686,11 @@ private fun MenuPanel(
                 graph.settings.update { it.copy(intervalSec = nextInterval(it.intervalSec)) }
             })
             TvButton("Bild", onClick = onPicture)
+            val track = music.current
+            if (track != null) {
+                TvButton(if (music.playing) "Musik: Pause" else "Musik: weiter", onClick = { graph.music.toggle() })
+                if (!track.isRadio) TvButton("Nächstes Stück", onClick = { graph.music.next() })
+            }
             TvButton("Übergang: ${s.transition.label}", onClick = {
                 graph.settings.update { it.copy(transition = it.transition.cycle()) }
             })

@@ -3,6 +3,17 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.6.0] – 2026-11-27 (versionCode 7)
+
+### Neu
+- **Musik und Radio:** Startseite → „Musik“. Läuft mit oder ohne Diashow, solange die App geöffnet ist; bei Videos pausiert die Musik automatisch. Pause, Weiter, Zufall, eigene Lautstärke.
+- **Radio:** Sender über das freie Verzeichnis radio-browser.info suchen und merken, oder auf der Handy-Seite mit Name und Stream-Adresse hinzufügen.
+- **Eigene Musik:** Musikstücke (MP3, M4A, FLAC, OGG, WAV …) über die Handy-Seite senden; Musik auf dem Beamer und dem USB-Stick nach Alben (neue Berechtigung „Musik“, wird auf der Musikseite angefragt).
+- In der Diashow: ▲ → „Musik: Pause/weiter“ und „Nächstes Stück“. Auf der Handy-Seite: Musik ⏯ und ⏭.
+
+### Geändert
+- Die von der Abspiel-Bibliothek mitgebrachte Berechtigung WAKE_LOCK wird entfernt (nicht nötig).
+
 ## [0.5.0] – 2026-11-27 (versionCode 6)
 
 ### Neu

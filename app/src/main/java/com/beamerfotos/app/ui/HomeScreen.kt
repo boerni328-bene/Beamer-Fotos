@@ -2,6 +2,8 @@ package com.beamerfotos.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +78,7 @@ fun HomeScreen(
     onPlayAll: () -> Unit,
     onSettings: () -> Unit,
     onDevice: () -> Unit,
+    onMusic: () -> Unit,
 ) {
     val albums by graph.store.albums.collectAsState()
     val settings by graph.settings.state.collectAsState()
@@ -86,6 +89,8 @@ fun HomeScreen(
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
     val total = albums.sumOf { it.photos.size }
+    val musicState by graph.music.state.collectAsState()
+    val musicLabel = musicState.current?.let { "♪ " + it.title.take(22) } ?: "Musik"
 
     Box(Modifier.fillMaxSize().background(Navy)) {
         Row(Modifier.fillMaxSize().padding(32.dp)) {
@@ -128,16 +133,18 @@ fun HomeScreen(
 
             // Rechts: Alben und Diashow.
             Column(Modifier.fillMaxSize()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
                     TvButton(
-                        if (total > 0) "Alle Fotos zeigen (${total})" else "Diashow",
+                        if (total > 0) "Alle zeigen (${total})" else "Diashow",
                         onClick = onPlayAll,
                         icon = Icons.Filled.PlayArrow,
                         primary = true,
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     Spacer(Modifier.width(16.dp))
-                    TvButton("Gerät & USB-Stick", onClick = onDevice)
+                    TvButton("Gerät & USB", onClick = onDevice)
+                    Spacer(Modifier.width(16.dp))
+                    TvButton(musicLabel, onClick = onMusic)
                     Spacer(Modifier.width(16.dp))
                     TvButton("Einstellungen", onClick = onSettings, icon = Icons.Filled.Settings)
                 }

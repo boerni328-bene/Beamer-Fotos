@@ -5,6 +5,9 @@ import com.beamerfotos.app.data.MediaLibrary
 import com.beamerfotos.app.data.PhotoStore
 import com.beamerfotos.app.data.SettingsStore
 import com.beamerfotos.app.image.ImageLoader
+import com.beamerfotos.app.music.MusicLibrary
+import com.beamerfotos.app.music.MusicPlayer
+import com.beamerfotos.app.music.RadioStore
 import com.beamerfotos.app.server.UploadServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +19,10 @@ class AppGraph private constructor(context: Context) {
     val settings = SettingsStore(context)
     val store = PhotoStore(context, settings, scope)
     val media = MediaLibrary(context, scope)
-    val server = UploadServer(context, store, settings)
+    val music = MusicPlayer(context)
+    val musicLibrary = MusicLibrary(context, store)
+    val radio = RadioStore(context)
+    val server = UploadServer(context, store, settings, music, radio)
 
     companion object {
         @Volatile private var instance: AppGraph? = null

@@ -16,6 +16,7 @@ import com.beamerfotos.app.ui.AlbumScreen
 import com.beamerfotos.app.ui.BeamerTheme
 import com.beamerfotos.app.ui.DeviceScreen
 import com.beamerfotos.app.ui.HomeScreen
+import com.beamerfotos.app.ui.MusicScreen
 import com.beamerfotos.app.ui.SettingsScreen
 import com.beamerfotos.app.ui.SlideshowScreen
 
@@ -34,10 +35,13 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         graph.server.start()
         graph.store.requestRefresh()
+        graph.music.onForeground()
     }
 
     override fun onStop() {
         graph.server.stop()
+        // Musik nur, solange die App sichtbar ist (kein Hintergrunddienst).
+        graph.music.onBackground()
         super.onStop()
     }
 }
@@ -48,6 +52,7 @@ sealed interface Screen {
     data class Show(val albumKey: String?, val startKey: String?, val sender: String? = null) : Screen
     data object Settings : Screen
     data object Device : Screen
+    data object Music : Screen
 }
 
 @Composable
@@ -76,6 +81,7 @@ fun App(graph: AppGraph) {
             onPlayAll = { push(Screen.Show(null, null)) },
             onSettings = { push(Screen.Settings) },
             onDevice = { push(Screen.Device) },
+            onMusic = { push(Screen.Music) },
         )
         is Screen.AlbumView -> AlbumScreen(
             graph = graph,
@@ -91,6 +97,7 @@ fun App(graph: AppGraph) {
             sender = screen.sender,
         )
         Screen.Settings -> SettingsScreen(graph = graph)
+        Screen.Music -> MusicScreen(graph = graph)
         Screen.Device -> DeviceScreen(
             graph = graph,
             onAlbum = { push(Screen.AlbumView(it.key)) },
