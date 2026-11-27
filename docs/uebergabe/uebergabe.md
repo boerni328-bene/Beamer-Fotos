@@ -6,7 +6,7 @@ Stand: 27.11.2026 · `main` = Version 0.7.0 (versionCode 9) · Regeln in `CLAUDE
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
 
 ## Stand
-- Vom Inhaber geprüft: 0.1.0, 0.2.0 und 0.6.1 („Alles klappt“, 27.11.2026). Der Auftrag, 0.3.0 bis 0.6.0 ohne Rückfrage zu bauen, ist erledigt.
+- Vom Inhaber geprüft: 0.1.0, 0.2.0, 0.6.1 und 0.7.0 („Alles klappt“, 27.11.2026). Der Auftrag, 0.3.0 bis 0.6.0 ohne Rückfrage zu bauen, ist erledigt.
 - Für 0.4.0 gibt es kein eigenes Release, weil der Build am WAKE_LOCK scheiterte; die Änderungen stecken in 0.5.0.
 - 0.3.0, Gerät und USB:
   - `data/MediaLibrary` liest Fotos und Videos über den MediaStore (`DATA`-Pfad, „external“ deckt alle Speicher ab) und bildet je Ordner ein Album (`Location.readOnly`, `Photo.readOnly`).
@@ -23,7 +23,7 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
   - „Automatisch verbessern“ rechnet jetzt an den Pixeln (`data/Enhance`, getestet): halber Grauwelt-Weißabgleich, Tonwerte (Streckung höchstens 2×), Gamma Richtung 45 %, Lebendigkeit, Unscharfmaskierung. Dazu der neue Regler „Schärfe“.
   - Berechnet wird in `ImageLoader.full(…, auto, sharpness)` mit Software-Decode, das Ergebnis wird als HARDWARE-Bitmap kopiert. Der Cache-Schlüssel enthält die Einstellungen. Die Farbmatrix (`Picture.matrix`) deckt nur noch die Regler ab.
   - Menüpunkt Musik in der Diashow (`MusicMenuButton`): ▲▼ ruft `switchStation` auf (Radio.kt), OK schaltet Pause/Weiter.
-  - Offen: Rechenzeit auf dem Beamer prüfen (1080p, etwa 0,1–0,5 s je Foto erwartet).
+  - Auf dem Beamer geprüft, keine Probleme gemeldet.
 - 0.6.1: Handy-Seite mit getrennten Auswahlknöpfen (Fotos/Videos/Musik). Gemischtes `accept` löste in Firefox „No camera access“ aus.
 - 0.6.0, Musik:
   - `music/MusicPlayer`: ein ExoPlayer für die ganze App. Er pausiert in `onStop` und läuft in `onStart` weiter; bei Videos geht die Lautstärke auf 0 (`duck`).
