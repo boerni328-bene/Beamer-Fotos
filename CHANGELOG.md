@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.6.1] – 2026-11-27 (versionCode 8)
+
+### Behoben
+- Handy-Seite: Beim Auswählen erschien in manchen Browsern (z. B. Firefox) „No camera access“, weil ein Knopf Fotos, Videos und Musik zugleich anbot. Jetzt gibt es getrennte Knöpfe: „📷 Fotos auswählen“, „🎬 Videos“ und „🎵 Musik“.
+
 ## [0.6.0] – 2026-11-27 (versionCode 7)
 
 ### Neu

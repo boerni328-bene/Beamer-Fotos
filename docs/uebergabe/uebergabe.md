@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.6.0 (versionCode 7) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.6.1 (versionCode 8) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -19,6 +19,7 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
 - 0.5.0, Bild verbessern:
   - Die Farbmatrix steckt in `data/Picture` (getestet). „Automatisch“ arbeitet mit Grenzwerten aus dem Vorschaubild (`ImageLoader.levels`).
   - Regler in `ui/PicturePanel`, erreichbar über Menü → Bild und über die Einstellungen. Gilt für alle Fotos, nicht für Videos.
+- 0.6.1: Handy-Seite mit getrennten Auswahlknöpfen (Fotos/Videos/Musik). Gemischtes `accept` löste in Firefox „No camera access“ aus.
 - 0.6.0, Musik:
   - `music/MusicPlayer`: ein ExoPlayer für die ganze App. Er pausiert in `onStop` und läuft in `onStart` weiter; bei Videos geht die Lautstärke auf 0 (`duck`).
   - `music/RadioStore`: Sender in den Prefs, Suche über radio-browser.info, .pls/.m3u werden aufgelöst. HLS-Streams laufen über `media3-exoplayer-hls`, für http-Streams ist `usesCleartextTraffic` gesetzt.

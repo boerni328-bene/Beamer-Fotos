@@ -18,7 +18,7 @@
   input[type=text] { width:100%; font-size:18px; padding:12px 14px; border-radius:10px; border:2px solid transparent; background:#1B2A41; color:#fff; }
   input[type=text]:focus { outline:none; border-color:var(--gold); }
   .big { display:block; width:100%; font-size:21px; font-weight:700; padding:18px; border:0; border-radius:14px; background:var(--gold); color:var(--navy); cursor:pointer; }
-  .big:disabled { opacity:.5; }
+  .big:disabled, .row button:disabled { opacity:.5; }
   .row { display:flex; gap:10px; }
   .row button { flex:1; font-size:18px; padding:14px 6px; border:0; border-radius:12px; background:#34486A; color:#fff; cursor:pointer; }
   .row button:active, .big:active { transform:scale(.97); }
@@ -53,8 +53,15 @@
     </div>
 
     <div class="card">
-      <button class="big" id="waehlen">📷 Fotos oder Videos auswählen</button>
-      <input type="file" id="dateien" accept="image/*,video/*,audio/*" multiple hidden>
+      <button class="big" id="waehlen">📷 Fotos auswählen</button>
+      <div class="row" style="margin-top:10px">
+        <button id="waehlenvideo">🎬 Videos</button>
+        <button id="waehlenmusik">🎵 Musik</button>
+      </div>
+      <!-- Je Art ein eigenes Feld: gemischte Typen lassen manche Browser (z. B. Firefox) nach der Kamera fragen. -->
+      <input type="file" id="dateien" accept="image/*" multiple hidden>
+      <input type="file" id="videodateien" accept="video/*" multiple hidden>
+      <input type="file" id="musikdateien" accept="audio/*" multiple hidden>
       <div id="fortschritt" class="hidden">
         <div class="bar"><div id="balken"></div></div>
         <div class="status" id="status"></div>
@@ -83,7 +90,7 @@
         <button data-cmd="music" aria-label="Musik Pause oder weiter">⏯ Musik</button>
         <button data-cmd="music_next" aria-label="Nächstes Stück">⏭ Nächstes</button>
       </div>
-      <p class="hint">Musikstücke (MP3, M4A, FLAC …) lassen sich oben wie Fotos senden; sie erscheinen am Beamer unter „Musik“.</p>
+      <p class="hint">Musikstücke (MP3, M4A, FLAC …) oben mit „🎵 Musik“ senden; sie erscheinen am Beamer unter „Musik“.</p>
       <label for="sendername" style="margin-top:14px">Radiosender hinzufügen</label>
       <input type="text" id="sendername" maxlength="60" placeholder="Name, z. B. Lieblingssender" autocomplete="off">
       <input type="text" id="senderurl" maxlength="500" placeholder="Adresse des Streams (http…)" autocomplete="off" inputmode="url" style="margin-top:8px">
@@ -101,6 +108,9 @@
   var albumInput = document.getElementById("album");
   var fileInput = document.getElementById("dateien");
   var chooseButton = document.getElementById("waehlen");
+  function setButtons(disabled) {
+    ["waehlen", "waehlenvideo", "waehlenmusik"].forEach(function (id) { document.getElementById(id).disabled = disabled; });
+  }
   var retryButton = document.getElementById("nochmal");
   var progressBox = document.getElementById("fortschritt");
   var bar = document.getElementById("balken");
@@ -226,12 +236,12 @@
   function run() {
     if (busy) return;
     busy = true;
-    chooseButton.disabled = true;
+    setButtons(true);
     progressBox.classList.remove("hidden");
     (function next() {
       if (!queue.length) {
         busy = false;
-        chooseButton.disabled = false;
+        setButtons(false);
         show();
         return;
       }
@@ -270,19 +280,25 @@
     run();
   }
 
-  chooseButton.addEventListener("click", function () {
-    if (!sender()) {
-      document.getElementById("namefehlt").hidden = false;
-      senderInput.focus();
-      return;
-    }
-    fileInput.click();
-  });
-  fileInput.addEventListener("change", function () {
-    var files = Array.prototype.slice.call(fileInput.files || []);
-    fileInput.value = "";
-    start(files);
-  });
+  function picker(button, input) {
+    button.addEventListener("click", function () {
+      if (busy) return;
+      if (!sender()) {
+        document.getElementById("namefehlt").hidden = false;
+        senderInput.focus();
+        return;
+      }
+      input.click();
+    });
+    input.addEventListener("change", function () {
+      var files = Array.prototype.slice.call(input.files || []);
+      input.value = "";
+      start(files);
+    });
+  }
+  picker(chooseButton, fileInput);
+  picker(document.getElementById("waehlenvideo"), document.getElementById("videodateien"));
+  picker(document.getElementById("waehlenmusik"), document.getElementById("musikdateien"));
   retryButton.addEventListener("click", function () { start(failed); });
 
   Array.prototype.forEach.call(document.querySelectorAll("[data-cmd]"), function (b) {
