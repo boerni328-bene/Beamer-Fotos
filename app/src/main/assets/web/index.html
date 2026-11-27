@@ -323,6 +323,11 @@
   if (/Firefox\//.test(navigator.userAgent)) {
     document.getElementById("videodateien").removeAttribute("accept");
     document.getElementById("musikdateien").removeAttribute("accept");
+  } else if (/Android/.test(navigator.userAgent)) {
+    // Chrome, Edge, Samsung Internet: bei audio/* (und ohne Angabe) wird der Mikrofonzugriff verlangt
+    // („No access“). Eine einzelne Dateiendung öffnet die allgemeine Dateiauswahl ohne Aufnahme;
+    // die übrigen Musikformate bleiben wählbar und werden unten geprüft.
+    document.getElementById("musikdateien").setAttribute("accept", ".mp3");
   }
   picker(document.getElementById("waehlenvideo"), document.getElementById("videodateien"));
   picker(document.getElementById("waehlenmusik"), document.getElementById("musikdateien"));
