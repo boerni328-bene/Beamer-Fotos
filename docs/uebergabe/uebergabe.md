@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.2.0 (versionCode 2) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.2.1 (versionCode 3) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -16,7 +16,8 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
     - Umbenennen, über `TextInputDialog`. Der neue Schlüssel wird im Stapel ersetzt (`onRenamed`).
   - Diashow: Zoom-Modus über das Menü. ▲▼ gedrückt halten zoomt stufenlos (1–6×, `withFrameNanos`), OK wechselt zum Verschieben, Zurück beendet den Zoom.
   - Drehungen wandern beim Verschieben und Umbenennen mit (`moveRotation`).
-- Noch nicht auf dem Gerät geprüft: Texteingabe (Bildschirmtastatur) und gehaltene Tasten (KeyUp) auf der XGIMI-Fernbedienung.
+- 0.2.0 vom Inhaber geprüft: „Alles klappt“.
+- 0.2.1: Fehler behoben, durch den der alte Name aus 0.1.0 (localStorage `albumName`) ins Feld Album kam und stattdessen „Android …“ als Absender erschien. Der Name ist jetzt Pflicht, das Album wird unter dem Schlüssel `album` gespeichert. Neu: „Name ändern“ für Absender (`renameSender`, fasst gleiche Namen zusammen). Noch nicht auf dem Gerät geprüft.
 
 ## Entscheidungen (Inhaber)
 - 26.11.: QR-Code und Browser, keine Handy-App; Aufbau wie Tabletten-Checker; Repository öffentlich.
