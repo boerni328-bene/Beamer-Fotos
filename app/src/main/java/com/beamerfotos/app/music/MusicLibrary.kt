@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import com.beamerfotos.app.data.Location
 import com.beamerfotos.app.data.Names
 import com.beamerfotos.app.data.PhotoStore
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 /** Eine Gruppe von Stücken (Ordner bzw. Album). */
-data class MusicFolder(val name: String, val where: String, val tracks: List<Track>)
+data class MusicFolder(val name: String, val where: String, val tracks: List<Track>, val location: Location? = null)
 
 /**
  * Musik zum Abspielen: über die Handy-Seite gesendete Stücke (Ordner „Musik“ neben den Fotos)
@@ -37,10 +38,10 @@ class MusicLibrary(private val context: Context, private val store: PhotoStore) 
     private fun own(): List<MusicFolder> = store.locations().mapNotNull { location ->
         val dir = PhotoStore.musicDir(location)
         val tracks = dir.listFiles().orEmpty()
-            .filter { it.isFile && Names.isAudio(it.name) }
+            .filter { it.isFile && !it.name.startsWith(".") && Names.isAudio(it.name) }
             .sortedBy { it.name.lowercase() }
-            .map { Track(it.nameWithoutExtension, "Gesendet", Uri.fromFile(it)) }
-        if (tracks.isEmpty()) null else MusicFolder("Gesendete Musik", location.label, tracks)
+            .map { Track(it.nameWithoutExtension, "Gesendet", Uri.fromFile(it), file = it) }
+        if (tracks.isEmpty()) null else MusicFolder("Gesendete Musik", location.label, tracks, location)
     }
 
     private fun device(): List<MusicFolder> {
@@ -52,6 +53,7 @@ class MusicLibrary(private val context: Context, private val store: PhotoStore) 
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.DATA,
         )
         val byAlbum = LinkedHashMap<String, MutableList<Track>>()
         context.contentResolver.query(
@@ -63,9 +65,13 @@ class MusicLibrary(private val context: Context, private val store: PhotoStore) 
             val iArtist = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val iAlbum = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val iDuration = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val iData = c.getColumnIndex(MediaStore.Audio.Media.DATA)
             while (c.moveToNext()) {
                 // Klingeltöne und kurze Systemklänge auslassen.
                 if (c.getLong(iDuration) in 1 until 30_000) continue
+                // Gesendete Musik steht schon oben bei „Gesendete Musik“.
+                val path = if (iData >= 0) c.getString(iData) ?: "" else ""
+                if ("/Android/data/" in path || "/${PhotoStore.PUBLIC_FOLDER}/" in path) continue
                 val artist = c.getString(iArtist)?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: ""
                 val album = c.getString(iAlbum)?.takeIf { it.isNotBlank() } ?: "Ohne Album"
                 val track = Track(

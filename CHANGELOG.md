@@ -3,6 +3,14 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.8.2] – 2026-11-27 (versionCode 13)
+
+### Neu
+- **USB-Stick als Speicher:** Wird jetzt über die Speicherverwaltung von Android erkannt. Fotos und Videos liegen sichtbar unter `Pictures/Beamer-Fotos`, Musik unter `Music/Beamer-Fotos` auf dem Stick (bleibt beim Deinstallieren erhalten, am PC sofort zu finden).
+- **Alles verschieben:** Einstellungen → „Alle Fotos und Musik verschieben nach …“ (z. B. vom Beamer auf den USB-Stick); neue Fotos werden dann dort gespeichert.
+- **Musik verwalten:** Gesendete Musik lässt sich auf der Musikseite einzeln oder ganz löschen und zwischen Beamer und USB-Stick verschieben.
+- Erscheint der Stick nicht, zeigen die Einstellungen, welche Speicher Android meldet.
+
 ## [0.8.1] – 2026-11-27 (versionCode 12)
 
 ### Behoben

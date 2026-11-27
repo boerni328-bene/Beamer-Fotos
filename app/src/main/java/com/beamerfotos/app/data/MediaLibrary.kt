@@ -100,7 +100,8 @@ class MediaLibrary(private val context: Context, scope: CoroutineScope) {
             val iModified = c.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
             while (c.moveToNext()) {
                 val path = c.getString(iData) ?: continue
-                if ("/Android/data/" in path) continue
+                // App-Ordner und die eigenen Fotos auf dem USB-Stick (stehen schon bei den Alben).
+                if ("/Android/data/" in path || "/${PhotoStore.PUBLIC_FOLDER}/" in path) continue
                 val file = File(path)
                 if (!Names.isMedia(file.name)) continue
                 val dir = file.parentFile ?: continue

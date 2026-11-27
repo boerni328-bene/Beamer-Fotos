@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,16 +35,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
+import com.beamerfotos.app.data.Location
 import com.beamerfotos.app.data.cycle
 import com.beamerfotos.app.data.intervalLabel
 import com.beamerfotos.app.data.nextIdle
 import com.beamerfotos.app.data.nextInterval
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(graph: AppGraph) {
     val s by graph.settings.state.collectAsState()
     val albums by graph.store.albums.collectAsState()
     var confirmDeleteAll by remember { mutableStateOf(false) }
+    var confirmMoveTo by remember { mutableStateOf<Location?>(null) }
+    var moveMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     // Zählt hoch, damit die Liste der Speicherorte neu gelesen wird (USB-Stick eingesteckt).
     var locationTick by remember { mutableIntStateOf(0) }
     val locations = remember(locationTick, albums) { graph.store.locations() }
@@ -143,10 +151,21 @@ fun SettingsScreen(graph: AppGraph) {
                     graph.settings.update { it.copy(storageId = next.id) }
                 }
             }
+            if (locations.size > 1) {
+                locations.forEach { target ->
+                    item {
+                        SettingRow("Alle Fotos und Musik verschieben nach", target.label) { confirmMoveTo = target }
+                    }
+                }
+            }
+            moveMessage?.let { msg ->
+                item { Text(msg, color = Sky, fontSize = 15.sp, modifier = Modifier.padding(start = 16.dp)) }
+            }
             if (locations.size == 1) {
                 item {
                     Text(
-                        "USB-Stick einstecken, dann erscheint er hier als weiterer Speicherort.",
+                        "USB-Stick einstecken und OK auf „Neue Fotos speichern auf“ drücken, dann erscheint er hier. " +
+                            "Android meldet: " + graph.store.storageReport().ifEmpty { "nichts" },
                         color = Muted, fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp),
                     )
                 }
@@ -166,6 +185,27 @@ fun SettingsScreen(graph: AppGraph) {
                 )
             }
         }
+    }
+
+    confirmMoveTo?.let { target ->
+        ConfirmDialog(
+            title = "Alles nach „${target.label}“ verschieben?",
+            text = "Alle eigenen Alben und die gesendete Musik werden nach „${target.label}“ verschoben. " +
+                "Neue Fotos werden ebenfalls dort gespeichert.",
+            confirm = "Verschieben",
+            onConfirm = {
+                confirmMoveTo = null
+                graph.settings.update { it.copy(storageId = target.id) }
+                moveMessage = "Verschiebe nach ${target.label} …"
+                scope.launch {
+                    val (photos, music) = withContext(Dispatchers.IO) { graph.store.moveAllTo(target) }
+                    locationTick++
+                    moveMessage = "Fertig: ${photoCount(photos)}" +
+                        (if (music > 0) " und $music Musikstücke" else "") + " nach ${target.label} verschoben."
+                }
+            },
+            onDismiss = { confirmMoveTo = null },
+        )
     }
 
     if (confirmDeleteAll) {

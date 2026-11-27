@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /** Ein Musikstück oder ein Radiosender. */
-data class Track(val title: String, val subtitle: String, val uri: Uri, val isRadio: Boolean = false)
+/** [file] ist gesetzt bei gesendeter Musik (lässt sich löschen und verschieben). */
+data class Track(val title: String, val subtitle: String, val uri: Uri, val isRadio: Boolean = false, val file: java.io.File? = null)
 
 data class MusicState(
     val current: Track? = null,

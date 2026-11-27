@@ -3,7 +3,9 @@ package com.beamerfotos.app.data
 import android.content.Context
 import android.media.ExifInterface
 import android.media.MediaMetadataRetriever
+import android.os.Build
 import android.os.Environment
+import android.os.storage.StorageManager
 import com.beamerfotos.app.image.ImageLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +47,8 @@ data class Location(
     val root: File,
     val removable: Boolean,
     val readOnly: Boolean = false,
+    /** Gesendete Musik; ohne Angabe neben den Fotos: <Speicher>/Musik. */
+    val musicRoot: File = File(root.parentFile ?: root, "Musik"),
 ) {
     fun free(): Long = runCatching { root.mkdirs(); root.usableSpace }.getOrDefault(0L)
 }
@@ -102,19 +106,58 @@ class PhotoStore(
         refreshRequests.trySend(Unit)
     }
 
-    /** Intern immer; dazu jeder eingesteckte USB-Speicher (App-Ordner, braucht keine Berechtigung). */
+    /**
+     * Intern immer; dazu jeder eingesteckte USB-Speicher. Bevorzugt sichtbar unter
+     * <Stick>/Pictures/Beamer-Fotos (Musik unter <Stick>/Music/Beamer-Fotos): bleibt beim Deinstallieren
+     * erhalten und ist am PC sofort zu finden. Geht das nicht, der App-Ordner Android/data/… auf dem Stick.
+     */
     fun locations(): List<Location> {
         val list = mutableListOf(Location(LOCATION_INTERNAL, "Intern", File(context.filesDir, "Fotos"), false))
-        val external = runCatching { context.getExternalFilesDirs(null).toList() }.getOrDefault(emptyList())
-        // Eintrag 0 ist der eingebaute Speicher, alle weiteren sind Wechselspeicher (USB, SD-Karte).
-        val removable = external.drop(1).filterNotNull().filter {
-            runCatching { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }.getOrDefault(false)
-        }
-        removable.forEachIndexed { i, dir ->
-            val label = if (removable.size > 1) "USB-Speicher ${i + 1}" else "USB-Speicher"
-            list += Location("usb:" + dir.absolutePath, label, File(dir, "Fotos"), true)
+        val appDirs = runCatching { context.getExternalFilesDirs(null).toList() }.getOrDefault(emptyList())
+            .drop(1).filterNotNull()
+        val volumes = usbVolumes(appDirs)
+        volumes.forEachIndexed { i, (volume, description) ->
+            val label = when {
+                description.isNotBlank() && volumes.count { it.second == description } == 1 -> description
+                volumes.size > 1 -> "USB-Speicher ${i + 1}"
+                else -> "USB-Speicher"
+            }
+            val public = File(volume, "Pictures/$PUBLIC_FOLDER")
+            val appDir = appDirs.firstOrNull { it.absolutePath.startsWith(volume.absolutePath + "/") }
+            list += when {
+                Build.VERSION.SDK_INT >= 30 && (public.isDirectory || public.mkdirs()) ->
+                    Location("usb:" + volume.absolutePath, label, public, true, musicRoot = File(volume, "Music/$PUBLIC_FOLDER"))
+                appDir != null -> Location("usb:" + volume.absolutePath, label, File(appDir, "Fotos"), true)
+                else -> return@forEachIndexed
+            }
         }
         return list
+    }
+
+    /** Was Android an Speichern meldet (Hilfe, falls ein Stick nicht erscheint). */
+    fun storageReport(): String = runCatching {
+        val sm = context.getSystemService(StorageManager::class.java)
+        sm.storageVolumes.joinToString(" · ") { v ->
+            val path = if (Build.VERSION.SDK_INT >= 30) v.directory?.absolutePath ?: "kein Pfad" else ""
+            "${v.getDescription(context)} (${if (v.isRemovable) "wechselbar" else "fest"}, ${v.state}${if (path.isNotEmpty()) ", $path" else ""})"
+        }
+    }.getOrDefault("")
+
+    /** Eingesteckte Wechselspeicher: Wurzelordner und Name (z. B. „SanDisk USB-Speicher“). */
+    private fun usbVolumes(appDirs: List<File>): List<Pair<File, String>> {
+        if (Build.VERSION.SDK_INT >= 30) {
+            val sm = context.getSystemService(StorageManager::class.java)
+            val found = runCatching {
+                sm.storageVolumes
+                    .filter { it.isRemovable && it.state == Environment.MEDIA_MOUNTED }
+                    .mapNotNull { v -> v.directory?.let { it to (v.getDescription(context) ?: "") } }
+            }.getOrDefault(emptyList())
+            if (found.isNotEmpty()) return found
+        }
+        // Ältere Geräte: Wurzel aus dem App-Ordner <Stick>/Android/data/<Paket>/files ableiten.
+        return appDirs.filter {
+            runCatching { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }.getOrDefault(false)
+        }.map { File(it.absolutePath.substringBefore("/Android/data/")) to "" }
     }
 
     /** Speicherort für neue Fotos; fehlt der gewählte USB-Speicher, wird intern gespeichert. */
@@ -142,7 +185,8 @@ class PhotoStore(
         }
         if (!dir.isDirectory && !dir.mkdirs()) return SaveResult.Error(500, "Ordner am Beamer nicht anlegbar.")
 
-        val tmp = File(dir, ".${System.nanoTime()}.part")
+        // Endung behalten: auf dem USB-Stick (Pictures/, Music/) nimmt Android nur passende Dateitypen an.
+        val tmp = File(dir, ".${System.nanoTime()}.part." + name.substringAfterLast('.'))
         val digest = MessageDigest.getInstance("SHA-256")
         val target = try {
             tmp.outputStream().buffered(256 * 1024).use { out ->
@@ -346,6 +390,50 @@ class PhotoStore(
         _albums.value.forEach { deleteAlbum(it) }
     }
 
+    /** Löscht gesendete Musikstücke; Anzahl gelöschter. */
+    fun deleteMusic(files: Collection<File>): Int {
+        val n = files.count { it.delete() }
+        _musicChanged.value = System.currentTimeMillis()
+        return n
+    }
+
+    /** Verschiebt gesendete Musik an einen anderen Speicherort; Anzahl verschobener. */
+    fun moveMusic(files: Collection<File>, target: Location): Int {
+        val dir = musicDir(target)
+        if (!dir.isDirectory && !dir.mkdirs()) return 0
+        var moved = 0
+        files.forEach { file ->
+            if (file.parentFile == dir) return@forEach
+            if (dir.usableSpace < file.length() + RESERVE_BYTES) return@forEach
+            val to = synchronized(renameLock) { File(dir, Names.unique(file.name) { File(dir, it).exists() }) }
+            val ok = file.renameTo(to) || runCatching {
+                file.copyTo(to)
+                to.setLastModified(file.lastModified())
+                file.delete()
+            }.getOrDefault(false)
+            if (ok) moved++ else to.delete()
+        }
+        _musicChanged.value = System.currentTimeMillis()
+        return moved
+    }
+
+    /** Alle Alben und alle gesendete Musik von den übrigen eigenen Speicherorten nach [target]. */
+    fun moveAllTo(target: Location): Pair<Int, Int> {
+        var photos = 0
+        var music = 0
+        val others = locations().filter { it.id != target.id }
+        _albums.value.filter { a -> others.any { it.id == a.location.id } }.forEach { album ->
+            photos += move(album.photos, File(target.root, album.name))
+            pruneEmpty(album.dir)
+        }
+        others.forEach { from ->
+            val files = musicDir(from).listFiles().orEmpty().filter { it.isFile && !it.name.startsWith(".") && Names.isAudio(it.name) }
+            if (files.isNotEmpty()) music += moveMusic(files, target)
+        }
+        requestRefresh()
+        return photos to music
+    }
+
     private fun scan(): List<Album> = locations().flatMap { location ->
         location.root.listFiles().orEmpty()
             .filter { it.isDirectory && !it.name.startsWith(".") }
@@ -360,13 +448,13 @@ class PhotoStore(
 
     private fun photosIn(files: Array<out File>, album: String, sender: String): List<Photo> {
         cleanUpLeftovers(files)
-        return files.filter { it.isFile && Names.isMedia(it.name) }.map { photo(it, album, sender) }
+        return files.filter { it.isFile && !it.name.startsWith(".") && Names.isMedia(it.name) }.map { photo(it, album, sender) }
     }
 
     /** Reste abgebrochener Übertragungen (älter als eine Stunde) entfernen. */
     private fun cleanUpLeftovers(files: Array<out File>) {
         val limit = System.currentTimeMillis() - 60 * 60 * 1000L
-        files.filter { it.name.endsWith(".part") && it.lastModified() < limit }.forEach { it.delete() }
+        files.filter { it.name.startsWith(".") && ".part" in it.name && it.lastModified() < limit }.forEach { it.delete() }
     }
 
     private fun photo(file: File, album: String, sender: String): Photo {
@@ -408,8 +496,10 @@ class PhotoStore(
     }
 
     companion object {
-        /** Gesendete Musik liegt neben den Fotos: <Speicher>/Musik. */
-        fun musicDir(location: Location): File = File(location.root.parentFile ?: location.root, "Musik")
+        fun musicDir(location: Location): File = location.musicRoot
+
+        /** Ordnername auf dem USB-Stick (Pictures/… und Music/…); die Gerätebibliothek blendet ihn aus. */
+        const val PUBLIC_FOLDER = "Beamer-Fotos"
 
         /** So viel bleibt immer frei, damit der Beamer selbst nicht voll läuft. */
         private const val RESERVE_BYTES = 200L * 1024 * 1024

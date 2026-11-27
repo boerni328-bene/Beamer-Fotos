@@ -40,11 +40,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
+import com.beamerfotos.app.data.Location
 import com.beamerfotos.app.music.MusicFolder
 import com.beamerfotos.app.music.RadioStore
 import com.beamerfotos.app.music.Station
+import com.beamerfotos.app.music.Track
 import com.beamerfotos.app.music.playStation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Musik und Radio, mit oder ohne Diashow (läuft weiter, solange die App offen ist).
@@ -60,6 +64,7 @@ fun MusicScreen(graph: AppGraph) {
     var searching by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<Station>?>(null) }
     var searchMessage by remember { mutableStateOf<String?>(null) }
+    var musicMessage by remember { mutableStateOf<String?>(null) }
     var volume by remember { mutableStateOf(graph.music.currentVolume) }
     var granted by remember { mutableStateOf(graph.musicLibrary.granted()) }
     val firstFocus = remember { FocusRequester() }
@@ -187,7 +192,8 @@ fun MusicScreen(graph: AppGraph) {
         if (folders.isEmpty()) {
             item { Text("Keine Musik gefunden.", color = Muted, fontSize = 16.sp) }
         }
-        items(folders, key = { "m:" + it.name + it.where }) { folder -> FolderRow(folder, graph) }
+        musicMessage?.let { msg -> item { Text(msg, color = Sky, fontSize = 16.sp) } }
+        items(folders, key = { "m:" + it.name + it.where }) { folder -> FolderRow(folder, graph) { musicMessage = it } }
         item { Spacer(Modifier.height(32.dp)) }
     }
 
@@ -224,24 +230,75 @@ private fun Heading(text: String) {
 }
 
 @Composable
-private fun FolderRow(folder: MusicFolder, graph: AppGraph) {
+private fun FolderRow(folder: MusicFolder, graph: AppGraph, onMessage: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf<List<Track>?>(null) }
+    val scope = rememberCoroutineScope()
+    // Nur gesendete Musik gehört der App und lässt sich löschen und verschieben.
+    val own = folder.location
+    val targets = remember(own, folder.tracks) {
+        if (own == null) emptyList() else graph.store.locations().filter { it.id != own.id }
+    }
+
+    fun stopIfPlaying(list: List<Track>) {
+        val current = graph.music.state.value.current?.file ?: return
+        if (list.any { it.file == current }) graph.music.stop()
+    }
+    fun moveTo(list: List<Track>, target: Location) {
+        stopIfPlaying(list)
+        onMessage("Verschiebe nach ${target.label} …")
+        scope.launch {
+            val n = withContext(Dispatchers.IO) { graph.store.moveMusic(list.mapNotNull { it.file }, target) }
+            onMessage(if (n == list.size) "${trackCount(n)} nach ${target.label} verschoben." else "${trackCount(n)} von ${list.size} verschoben (Speicher voll?).")
+        }
+    }
+
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             TvButton("${folder.name.take(36)} (${folder.tracks.size})", onClick = { graph.music.play(folder.tracks) }, icon = Icons.Filled.PlayArrow)
             TvButton("Zufällig", onClick = { graph.music.play(folder.tracks, (folder.tracks.indices).random(), shuffle = true) })
             TvButton(if (open) "Titel ausblenden" else "Titel", onClick = { open = !open })
+            if (own != null) {
+                targets.forEach { t -> TvButton("Alle nach ${t.label}", onClick = { moveTo(folder.tracks, t) }) }
+                TvButton("Alle löschen", onClick = { confirmDelete = folder.tracks }, icon = Icons.Filled.Delete)
+            }
             Text(folder.where, color = Muted, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (open) {
             Column(Modifier.padding(start = 32.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 folder.tracks.forEachIndexed { i, track ->
-                    TvButton(
-                        track.title.take(50) + if (track.subtitle.isNotEmpty() && track.subtitle != "Gesendet") " · ${track.subtitle.take(30)}" else "",
-                        onClick = { graph.music.play(folder.tracks, i) },
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TvButton(
+                            track.title.take(50) + if (track.subtitle.isNotEmpty() && track.subtitle != "Gesendet") " · ${track.subtitle.take(30)}" else "",
+                            onClick = { graph.music.play(folder.tracks, i) },
+                        )
+                        if (own != null) {
+                            targets.forEach { t -> TvButton("Nach ${t.label}", onClick = { moveTo(listOf(track), t) }) }
+                            TvButton("Löschen", onClick = { confirmDelete = listOf(track) }, icon = Icons.Filled.Delete)
+                        }
+                    }
                 }
             }
         }
     }
+
+    confirmDelete?.let { list ->
+        ConfirmDialog(
+            title = if (list.size == 1) "„${list[0].title.take(40)}“ löschen?" else "Alle ${list.size} Stücke löschen?",
+            text = "Wird vom Speicher „${own?.label ?: ""}“ gelöscht. Das lässt sich nicht rückgängig machen.",
+            confirm = "Löschen",
+            onConfirm = {
+                confirmDelete = null
+                stopIfPlaying(list)
+                val n = graph.store.deleteMusic(list.mapNotNull { it.file })
+                onMessage("${trackCount(n)} gelöscht.")
+            },
+            onDismiss = { confirmDelete = null },
+        )
+    }
 }
+
+private fun trackCount(n: Int) = if (n == 1) "1 Stück" else "$n Stücke"
