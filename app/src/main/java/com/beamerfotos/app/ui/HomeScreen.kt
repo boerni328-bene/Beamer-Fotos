@@ -76,6 +76,7 @@ fun HomeScreen(
     graph: AppGraph,
     onAlbum: (Album) -> Unit,
     onPlayAll: () -> Unit,
+    onPlay: (albumKey: String?, startKey: String?, sender: String?) -> Unit,
     onSettings: () -> Unit,
     onDevice: () -> Unit,
     onMusic: () -> Unit,
@@ -91,6 +92,8 @@ fun HomeScreen(
     val total = albums.sumOf { it.photos.size }
     val musicState by graph.music.state.collectAsState()
     val musicLabel = musicState.current?.let { "♪ " + it.title.take(22) } ?: "Musik"
+    val lastShow by graph.settings.lastShow.collectAsState()
+    val favorites by graph.settings.favorites.collectAsState()
 
     Box(Modifier.fillMaxSize().background(Navy)) {
         Row(Modifier.fillMaxSize().padding(32.dp)) {
@@ -142,6 +145,16 @@ fun HomeScreen(
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     Spacer(Modifier.width(16.dp))
+                    lastShow?.let { last ->
+                        TvButton("Weiter: ${last.title.take(22)} (${last.position}/${last.total})", onClick = {
+                            onPlay(last.albumKey, last.photoKey, last.sender)
+                        })
+                        Spacer(Modifier.width(16.dp))
+                    }
+                    if (favorites.isNotEmpty()) {
+                        TvButton("★ Favoriten (${favorites.size})", onClick = { onPlay(FAVORITES, null, null) })
+                        Spacer(Modifier.width(16.dp))
+                    }
                     TvButton("Gerät & USB", onClick = onDevice)
                     Spacer(Modifier.width(16.dp))
                     TvButton(musicLabel, onClick = onMusic)

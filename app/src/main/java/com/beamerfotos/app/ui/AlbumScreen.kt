@@ -48,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -98,6 +99,8 @@ fun AlbumScreen(
     val albums = ownAlbums
     val settings by graph.settings.state.collectAsState()
     val rotations by graph.settings.rotations.collectAsState()
+    val favorites by graph.settings.favorites.collectAsState()
+    val hidden by graph.settings.hidden.collectAsState()
 
     val key = albumKey
     val album = (ownAlbums + mediaAlbums).firstOrNull { it.key == key }
@@ -162,6 +165,14 @@ fun AlbumScreen(
                         modifier = Modifier.focusRequester(firstFocus),
                     )
                     if (chosen.isNotEmpty()) {
+                        val allFav = chosen.all { it.key in favorites }
+                        TvButton(if (allFav) "☆ Kein Favorit" else "★ Favorit", onClick = {
+                            chosen.forEach { graph.settings.setFavorite(it.key, !allFav) }
+                        })
+                        val allHidden = chosen.all { it.key in hidden }
+                        TvButton(if (allHidden) "Wieder zeigen" else "Ausblenden", onClick = {
+                            chosen.forEach { graph.settings.setHidden(it.key, !allHidden) }
+                        })
                         TvButton(if (readOnly) "In Album kopieren" else "Verschieben", onClick = { dialog = AlbumDialog.Move })
                         if (!readOnly) {
                             TvButton("Löschen", onClick = { dialog = AlbumDialog.DeleteSelected }, icon = Icons.Filled.Delete)
@@ -226,7 +237,23 @@ fun AlbumScreen(
                             }
                         }
                 ) {
-                    Thumb(photo.file, Modifier.fillMaxWidth().aspectRatio(4f / 3f), rotations[photo.key] ?: 0)
+                    val isHidden = photo.key in hidden
+                    Thumb(
+                        photo.file,
+                        Modifier.fillMaxWidth().aspectRatio(4f / 3f).alpha(if (isHidden) 0.35f else 1f),
+                        rotations[photo.key] ?: 0,
+                    )
+                    if (photo.key in favorites || isHidden) {
+                        Text(
+                            if (isHidden) "ausgeblendet" else "★",
+                            color = if (isHidden) Color.White else Gold, fontSize = if (isHidden) 13.sp else 20.sp,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp)
+                                .background(Color(0x99000000), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 1.dp),
+                        )
+                    }
                     if (showFilter && sender == null && photo.sender.isNotEmpty()) {
                         Text(
                             photo.sender, color = Color.White, fontSize = 12.sp, maxLines = 1,

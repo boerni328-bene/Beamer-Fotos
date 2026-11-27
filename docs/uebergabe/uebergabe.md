@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.7.1 (versionCode 10) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 27.11.2026 · `main` = Version 0.8.0 (versionCode 11) · Regeln in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys (iPhone und Android) senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -19,6 +19,11 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
 - 0.5.0, Bild verbessern:
   - Die Farbmatrix steckt in `data/Picture` (getestet). „Automatisch“ arbeitet mit Grenzwerten aus dem Vorschaubild (`ImageLoader.levels`).
   - Regler in `ui/PicturePanel`, erreichbar über Menü → Bild und über die Einstellungen. Gilt für alle Fotos, nicht für Videos.
+- 0.8.0:
+  - Bilderrahmen in `App()` (MainActivity): Leerlauf über `onPreviewKeyEvent`, dazu `startWithShow`. Uhr über `Clock` in der Diashow.
+  - Fortsetzen: `resumeKey(showId)` und `saveResume(LastShow)`, „Weiter“ auf der Startseite.
+  - Favoriten und Ausblenden: StringSets in den Prefs, mit `moveRotation`, `copyRotation` und `forgetRotation` mitgeführt. Diashow `FAVORITES`.
+  - Duplikate: SHA-256 beim Speichern, Vergleich mit gleich großen eigenen Fotos (`SaveResult.Duplicate`, Antwort `duplicate:true`).
 - 0.7.1: In Firefox wird bei Video- und Musik-Auswahl das `accept` entfernt (sonst „No camera access“). Nicht unterstützte Dateien werden in `start()` ausgelassen. Auf dem Handy noch nicht geprüft.
 - Freigegeben am 27.11. (in dieser Reihenfolge): 0.8.0 Bilderrahmen, Fortsetzen, Favoriten und Ausblenden, Duplikate · 0.9.0 Doppelbild und Collage, Zeitleiste · 0.10.0 Handy-Fernbedienung, schnelles Senden (nur als Schalter, ab Werk aus).
 - 0.7.0:

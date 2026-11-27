@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
 import com.beamerfotos.app.data.cycle
 import com.beamerfotos.app.data.intervalLabel
+import com.beamerfotos.app.data.nextIdle
 import com.beamerfotos.app.data.nextInterval
 
 @Composable
@@ -106,6 +107,30 @@ fun SettingsScreen(graph: AppGraph) {
                 }
             }
 
+            item { Section("Bilderrahmen") }
+            item {
+                SettingRow(
+                    "Diashow startet von selbst nach",
+                    if (s.idleMinutes == 0) "aus" else "${s.idleMinutes} min ohne Bedienung",
+                ) { graph.settings.update { it.copy(idleMinutes = nextIdle(it.idleMinutes)) } }
+            }
+            item {
+                SettingRow("Beim Öffnen der App Diashow starten", onOff(s.startWithShow)) {
+                    graph.settings.update { it.copy(startWithShow = !it.startWithShow) }
+                }
+            }
+            item {
+                SettingRow("Uhrzeit und Datum in der Diashow", onOff(s.showClock)) {
+                    graph.settings.update { it.copy(showClock = !it.showClock) }
+                }
+            }
+            item {
+                val hiddenCount by graph.settings.hidden.collectAsState()
+                SettingRow(
+                    "Ausgeblendete Fotos wieder zeigen",
+                    if (hiddenCount.isEmpty()) "keine ausgeblendet" else photoCount(hiddenCount.size),
+                ) { graph.settings.showAllAgain() }
+            }
             item { Section("Bild (gilt für alle Fotos)") }
             item { PicturePanel(graph, requestFocus = false) }
             item { Section("Speicher und Zugang") }

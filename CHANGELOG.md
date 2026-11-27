@@ -3,6 +3,15 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.8.0] – 2026-11-27 (versionCode 11)
+
+### Neu
+- **Bilderrahmen:** Einstellungen → Bilderrahmen: Diashow startet nach 2, 5, 10 oder 30 Minuten ohne Bedienung von selbst, auf Wunsch auch gleich beim Öffnen der App; Uhrzeit und Datum in der Diashow einblendbar.
+- **Fortsetzen:** Jede Diashow (je Album, Absender, „Alle“) beginnt dort, wo sie zuletzt war. Startseite: „Weiter: <Album> (Foto x/y)“.
+- **Favoriten:** In der Diashow ▲ → „☆ Favorit“; im Album über „Auswählen“. Startseite: „★ Favoriten“ als eigene Diashow.
+- **Ausblenden:** „Nicht mehr zeigen“ in der Diashow bzw. „Ausblenden“ im Album – das Foto bleibt gespeichert, erscheint aber nicht mehr in der Diashow (im Album blass mit „ausgeblendet“). Einstellungen → „Ausgeblendete Fotos wieder zeigen“.
+- **Doppelte Fotos:** Schickt jemand ein Foto, das schon auf dem Beamer ist (gleicher Inhalt), wird es nicht noch einmal gespeichert; die Handy-Seite meldet „schon vorhanden“.
+
 ## [0.7.1] – 2026-11-27 (versionCode 10)
 
 ### Behoben

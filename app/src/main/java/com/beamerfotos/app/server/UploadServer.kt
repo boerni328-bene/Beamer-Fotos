@@ -138,6 +138,7 @@ class UploadServer(
         return when (val result = store.save(r.query["album"], r.query["sender"], r.query["name"], length, input)) {
             is SaveResult.Ok -> Http.json(200, "ok" to true, "name" to result.file.name)
             is SaveResult.Error -> Http.json(result.status, "ok" to false, "error" to result.message)
+            is SaveResult.Duplicate -> Http.json(200, "ok" to true, "duplicate" to true, "name" to result.existing.name)
         }
     }
 

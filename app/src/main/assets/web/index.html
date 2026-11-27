@@ -121,7 +121,7 @@
     "video/mp4": ".mp4", "video/quicktime": ".mov", "video/x-matroska": ".mkv", "video/x-msvideo": ".avi", "video/avi": ".avi", "video/webm": ".webm", "video/3gpp": ".3gp",
     "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/x-m4a": ".m4a", "audio/aac": ".aac", "audio/flac": ".flac", "audio/ogg": ".ogg", "audio/wav": ".wav", "audio/x-wav": ".wav" };
 
-  var queue = [], failed = [], busy = false, sentTotal = 0, batchDone = 0, batchSize = 0;
+  var queue = [], failed = [], busy = false, sentTotal = 0, batchDone = 0, batchSize = 0, batchDuplicates = 0;
 
   // Bis 0.2.0 hieß das einzige Feld „Name oder Anlass“ (Schlüssel albumName): als Name übernehmen.
   try {
@@ -204,7 +204,12 @@
         }
       };
       x.onload = function () {
-        if (x.status === 200) { resolve(); return; }
+        if (x.status === 200) {
+          var dup = false;
+          try { dup = !!JSON.parse(x.responseText).duplicate; } catch (e) {}
+          resolve(dup);
+          return;
+        }
         if (x.status === 403) denied();
         var msg = "Fehler " + x.status;
         try { msg = JSON.parse(x.responseText).error || msg; } catch (e) {}
@@ -227,7 +232,10 @@
         statusLine.textContent = (batchSize - failed.length) + " von " + batchSize + " gesendet, " + failed.length + " fehlgeschlagen.";
       } else {
         statusLine.className = "status ok";
-        statusLine.textContent = "✓ " + batchSize + (batchSize === 1 ? " Datei" : " Dateien") + " am Beamer. Insgesamt gesendet: " + sentTotal + ".";
+        var fresh = batchSize - batchDuplicates;
+        statusLine.textContent = "✓ " + fresh + (fresh === 1 ? " Datei" : " Dateien") + " am Beamer" +
+          (batchDuplicates ? " · " + batchDuplicates + " schon vorhanden (nicht doppelt gespeichert)" : "") +
+          ". Insgesamt gesendet: " + sentTotal + ".";
       }
     }
     retryButton.classList.toggle("hidden", busy || failed.length === 0);
@@ -255,8 +263,8 @@
           throw e;
         });
       };
-      attempt(1).then(function () {
-        sentTotal++;
+      attempt(1).then(function (dup) {
+        if (dup) batchDuplicates++; else sentTotal++;
       }).catch(function (e) {
         failed.push(file);
         var li = document.createElement("li");
@@ -287,6 +295,7 @@
     queue = files.slice();
     failed = [];
     batchDone = 0;
+    batchDuplicates = 0;
     batchSize = queue.length;
     bar.style.width = "0";
     run();

@@ -82,7 +82,9 @@ import com.beamerfotos.app.data.Fit
 import com.beamerfotos.app.data.Photo
 import com.beamerfotos.app.data.Picture
 import com.beamerfotos.app.data.Transition
+import com.beamerfotos.app.data.LastShow
 import com.beamerfotos.app.data.cycle
+import com.beamerfotos.app.data.showIdOf
 import com.beamerfotos.app.data.intervalLabel
 import com.beamerfotos.app.data.nextInterval
 import com.beamerfotos.app.data.ordered
@@ -96,9 +98,14 @@ import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 private enum class Overlay { NONE, MENU, STRIP, PICTURE }
+
+/** Besondere Diashow: alle Favoriten. */
+const val FAVORITES = "favoriten"
 
 private const val TRANSITION_MS = 900
 private const val MAX_ZOOM = 6f
@@ -128,19 +135,25 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     val albums by graph.store.albums.collectAsState()
     val mediaAlbums by graph.media.albums.collectAsState()
     val rotations by graph.settings.rotations.collectAsState()
+    val favorites by graph.settings.favorites.collectAsState()
+    val hidden by graph.settings.hidden.collectAsState()
     val url = rememberUploadUrl(graph)
     val scope = rememberCoroutineScope()
 
     // Ohne Album: alle eigenen Fotos. „media:…“: alle Fotos eines Speichers (Gerät oder USB-Stick).
     fun source(own: List<Album>, media: List<Album>): List<Photo> = when {
         albumKey == null -> own.flatMap { it.photos }
+        albumKey == FAVORITES -> (own + media).flatMap { it.photos }.filter { it.key in favorites }.distinctBy { it.key }
         albumKey.startsWith("media:") -> media.filter { it.location.id == albumKey }.flatMap { it.photos }
         else -> (own + media).filter { it.key == albumKey }.flatMap { it.photos }
-    }.filter { sender == null || it.sender == sender }
+    }.filter { (sender == null || it.sender == sender) && it.key !in hidden }
 
     val seed = remember { System.currentTimeMillis() }
     val photos = remember { mutableStateListOf<Photo>().apply { addAll(ordered(source(albums, mediaAlbums), settings.order, seed)) } }
-    var index by remember { mutableIntStateOf(photos.indexOfFirst { it.key == startKey }.coerceAtLeast(0)) }
+    // Ohne bestimmtes Startfoto dort weitermachen, wo diese Diashow zuletzt war.
+    val showId = showIdOf(albumKey, sender)
+    val firstKey = startKey ?: graph.settings.resumeKey(showId)
+    var index by remember { mutableIntStateOf(photos.indexOfFirst { it.key == firstKey }.coerceAtLeast(0)) }
     var previous by remember { mutableStateOf<Photo?>(null) }
     var previousKb by remember { mutableFloatStateOf(0f) }
     var direction by remember { mutableIntStateOf(1) }
@@ -211,7 +224,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     }
 
     // Neue und gelöschte Fotos übernehmen, ohne die laufende Diashow neu zu starten.
-    LaunchedEffect(albums, mediaAlbums) {
+    LaunchedEffect(albums, mediaAlbums, hidden, favorites) {
         val all = source(albums, mediaAlbums)
         val allKeys = all.map { it.key }.toHashSet()
         if (photos.any { it.key !in allKeys }) {
@@ -240,6 +253,18 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         } else {
             photos.addAll(fresh)
         }
+    }
+
+    // Position merken (Fortsetzen und „Weiter ansehen“ auf der Startseite).
+    LaunchedEffect(photos.getOrNull(index)?.key) {
+        val photo = photos.getOrNull(index) ?: return@LaunchedEffect
+        val title = when {
+            albumKey == null -> "Alle Fotos"
+            albumKey == FAVORITES -> "Favoriten"
+            albumKey.startsWith("media:") -> mediaAlbums.firstOrNull { it.location.id == albumKey }?.location?.label ?: "Gerät"
+            else -> (albums + mediaAlbums).firstOrNull { it.key == albumKey }?.name ?: photo.album
+        } + (sender?.let { " · ${senderLabel(it)}" } ?: "")
+        graph.settings.saveResume(LastShow(albumKey, sender, photo.key, index + 1, photos.size, title))
     }
 
     // Weiterschalten nach der Anzeigedauer (nicht bei Pause, offenem Menü oder Vergrößerung).
@@ -471,10 +496,12 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         if (photos.isEmpty()) EmptyShow(url)
 
         // Einblendungen
+        if (settings.showClock && panel == Overlay.NONE) Clock(Modifier.align(Alignment.TopStart).padding(28.dp))
         if (settings.showInfo && current != null && panel == Overlay.NONE) {
             Column(Modifier.align(Alignment.BottomStart).padding(28.dp)) {
                 Text(
-                    current.album + if (current.sender.isNotEmpty()) "  ·  ${current.sender}" else "",
+                    (if (current.key in favorites) "★ " else "") +
+                        current.album + if (current.sender.isNotEmpty()) "  ·  ${current.sender}" else "",
                     color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = shadowText,
                 )
                 Text(
@@ -519,6 +546,12 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                 canDelete = current?.readOnly == false,
                 onTogglePause = { togglePause() },
                 onRotate = { current?.let { graph.settings.rotate(it.key) } },
+                isFavorite = current?.let { it.key in favorites },
+                onFavorite = { current?.let { graph.settings.setFavorite(it.key, it.key !in favorites) } },
+                onHide = {
+                    current?.let { graph.settings.setHidden(it.key, true) }
+                    panel = Overlay.NONE
+                },
                 onPicture = { panel = Overlay.PICTURE },
                 onZoom = {
                     zoomMode = true
@@ -651,6 +684,9 @@ private fun MenuPanel(
     canDelete: Boolean,
     onTogglePause: () -> Unit,
     onRotate: () -> Unit,
+    isFavorite: Boolean?,
+    onFavorite: () -> Unit,
+    onHide: () -> Unit,
     onPicture: () -> Unit,
     onZoom: () -> Unit,
     onDelete: () -> Unit,
@@ -683,6 +719,10 @@ private fun MenuPanel(
                 if (paused) "Weiter" else "Pause", onClick = onTogglePause, icon = Icons.Filled.PlayArrow,
                 modifier = Modifier.focusRequester(first),
             )
+            if (isFavorite != null) {
+                TvButton(if (isFavorite) "★ Favorit" else "☆ Favorit", onClick = onFavorite)
+                TvButton("Nicht mehr zeigen", onClick = onHide)
+            }
             if (hasPhoto) {
                 TvButton("Drehen", onClick = onRotate, icon = Icons.Filled.Refresh)
                 TvButton("Zoom", onClick = onZoom)
@@ -792,4 +832,26 @@ private fun MusicMenuButton(graph: AppGraph, onHint: (String) -> Unit) {
             }
         },
     )
+}
+
+/** Uhrzeit und Datum für den Bilderrahmen-Betrieb. */
+@Composable
+private fun Clock(modifier: Modifier = Modifier) {
+    var now by remember { mutableStateOf(Date()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = Date()
+            delay(10_000)
+        }
+    }
+    Column(modifier) {
+        Text(
+            SimpleDateFormat("HH:mm", Locale.GERMANY).format(now),
+            color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Light, style = shadowText,
+        )
+        Text(
+            SimpleDateFormat("EEEE, d. MMMM", Locale.GERMANY).format(now),
+            color = Color.White, fontSize = 18.sp, style = shadowText,
+        )
+    }
 }

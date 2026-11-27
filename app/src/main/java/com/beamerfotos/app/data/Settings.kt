@@ -37,9 +37,32 @@ data class SlideSettings(
     val warmth: Int = 0,
     val autoEnhance: Boolean = false,
     val sharpness: Int = 0,
+    // Bilderrahmen: Diashow nach so vielen Minuten ohne Bedienung (0 = aus), beim Öffnen starten, Uhrzeit zeigen
+    val idleMinutes: Int = 0,
+    val startWithShow: Boolean = false,
+    val showClock: Boolean = false,
 )
 
 const val LOCATION_INTERNAL = "intern"
+
+/** Wählbare Wartezeit bis zum Bilderrahmen in Minuten; 0 = aus. */
+val IDLE_MINUTES = listOf(0, 2, 5, 10, 30)
+
+fun nextIdle(current: Int): Int = IDLE_MINUTES[(IDLE_MINUTES.indexOf(current) + 1).mod(IDLE_MINUTES.size)]
+
+/** Zuletzt gesehene Diashow. */
+data class LastShow(
+    val albumKey: String?,
+    val sender: String?,
+    val photoKey: String,
+    val position: Int,
+    val total: Int,
+    val title: String,
+) {
+    val showId: String get() = showIdOf(albumKey, sender)
+}
+
+fun showIdOf(albumKey: String?, sender: String?) = (albumKey ?: "alle") + "|" + (sender ?: "")
 
 /** Wählbare Anzeigedauer je Foto in Sekunden; 0 = nur von Hand weiter. */
 val INTERVALS = listOf(3, 5, 6, 8, 10, 15, 20, 30, 60, 0)
@@ -98,6 +121,9 @@ class SettingsStore(context: Context) {
             .putInt("waerme", n.warmth)
             .putBoolean("auto_verbessern", n.autoEnhance)
             .putInt("schaerfe", n.sharpness)
+            .putInt("leerlauf_minuten", n.idleMinutes)
+            .putBoolean("start_mit_diashow", n.startWithShow)
+            .putBoolean("uhr", n.showClock)
             .apply()
     }
 
@@ -111,23 +137,78 @@ class SettingsStore(context: Context) {
         prefs.edit().apply { if (deg == 0) remove(ROT + path) else putInt(ROT + path, deg) }.apply()
     }
 
-    /** Drehung mitnehmen, wenn ein Foto verschoben wird. */
+    /** Drehung, Favorit und Ausblendung mitnehmen, wenn ein Foto verschoben wird. */
     fun moveRotation(from: String, to: String) {
-        val deg = _rotations.value[from] ?: return
-        _rotations.value = _rotations.value - from + (to to deg)
-        prefs.edit().remove(ROT + from).putInt(ROT + to, deg).apply()
+        copyRotation(from, to)
+        forgetRotation(from)
     }
 
     fun copyRotation(from: String, to: String) {
-        val deg = _rotations.value[from] ?: return
-        _rotations.value = _rotations.value + (to to deg)
-        prefs.edit().putInt(ROT + to, deg).apply()
+        _rotations.value[from]?.let { deg ->
+            _rotations.value = _rotations.value + (to to deg)
+            prefs.edit().putInt(ROT + to, deg).apply()
+        }
+        if (from in _favorites.value) setMark(_favorites, FAV, to, true)
+        if (from in _hidden.value) setMark(_hidden, HIDDEN, to, true)
     }
 
     fun forgetRotation(path: String) {
-        if (path !in _rotations.value) return
-        _rotations.value = _rotations.value - path
-        prefs.edit().remove(ROT + path).apply()
+        if (path in _rotations.value) {
+            _rotations.value = _rotations.value - path
+            prefs.edit().remove(ROT + path).apply()
+        }
+        setMark(_favorites, FAV, path, false)
+        setMark(_hidden, HIDDEN, path, false)
+    }
+
+    // --- Favoriten und ausgeblendete Fotos (Pfade) ---
+
+    private val _favorites = MutableStateFlow(prefs.getStringSet(FAV, emptySet())?.toSet() ?: emptySet())
+    val favorites: StateFlow<Set<String>> = _favorites
+
+    private val _hidden = MutableStateFlow(prefs.getStringSet(HIDDEN, emptySet())?.toSet() ?: emptySet())
+    /** Fotos, die in der Diashow nicht mehr gezeigt werden (bleiben gespeichert). */
+    val hidden: StateFlow<Set<String>> = _hidden
+
+    private fun setMark(flow: MutableStateFlow<Set<String>>, key: String, path: String, on: Boolean) {
+        if ((path in flow.value) == on) return
+        flow.value = if (on) flow.value + path else flow.value - path
+        prefs.edit().putStringSet(key, flow.value).apply()
+    }
+
+    fun setFavorite(path: String, on: Boolean) = setMark(_favorites, FAV, path, on)
+    fun setHidden(path: String, on: Boolean) = setMark(_hidden, HIDDEN, path, on)
+
+    fun showAllAgain() {
+        _hidden.value = emptySet()
+        prefs.edit().remove(HIDDEN).apply()
+    }
+
+    // --- Fortsetzen: letzte Position je Diashow ---
+
+    /** Zuletzt gezeigtes Foto einer Diashow ([showId] = Album bzw. „alle“, Absender). */
+    fun resumeKey(showId: String): String? = prefs.getString(RESUME + showId, null)
+
+    private val _lastShow = MutableStateFlow(readLastShow())
+    /** Die zuletzt gesehene Diashow (für „Weiter ansehen“ auf der Startseite). */
+    val lastShow: StateFlow<LastShow?> = _lastShow
+
+    fun saveResume(show: LastShow) {
+        _lastShow.value = show
+        prefs.edit()
+            .putString(RESUME + show.showId, show.photoKey)
+            .putString(
+                "letzte_diashow",
+                listOf(show.albumKey ?: "", show.sender ?: "", show.photoKey, show.position, show.total, show.title)
+                    .joinToString("\t"),
+            )
+            .apply()
+    }
+
+    private fun readLastShow(): LastShow? {
+        val p = (prefs.getString("letzte_diashow", null) ?: return null).split('\t')
+        if (p.size < 6) return null
+        return LastShow(p[0].ifEmpty { null }, p[1].ifEmpty { null }, p[2], p[3].toIntOrNull() ?: 0, p[4].toIntOrNull() ?: 0, p[5])
     }
 
     private fun newToken(): String {
@@ -157,6 +238,9 @@ class SettingsStore(context: Context) {
             warmth = prefs.getInt("waerme", 0).coerceIn(Picture.WARMTH),
             autoEnhance = prefs.getBoolean("auto_verbessern", false),
             sharpness = prefs.getInt("schaerfe", 0).coerceIn(Picture.SHARPNESS),
+            idleMinutes = prefs.getInt("leerlauf_minuten", 0).takeIf { it in IDLE_MINUTES } ?: 0,
+            startWithShow = prefs.getBoolean("start_mit_diashow", false),
+            showClock = prefs.getBoolean("uhr", false),
         )
     }
 
@@ -165,5 +249,8 @@ class SettingsStore(context: Context) {
 
     private companion object {
         const val ROT = "drehung:"
+        const val FAV = "favoriten"
+        const val HIDDEN = "ausgeblendet"
+        const val RESUME = "weiter:"
     }
 }

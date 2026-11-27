@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
 /** Ein Foto; [sender] ist der Name des Handys, von dem es kam (leer, wenn unbekannt). */
@@ -62,6 +63,8 @@ data class Arrival(val file: File, val album: String, val sender: String)
 sealed interface SaveResult {
     data class Ok(val file: File) : SaveResult
     data class Error(val status: Int, val message: String) : SaveResult
+    /** Gleiche Datei gibt es schon: nicht erneut gespeichert. */
+    data class Duplicate(val existing: File) : SaveResult
 }
 
 class PhotoStore(
@@ -140,6 +143,7 @@ class PhotoStore(
         if (!dir.isDirectory && !dir.mkdirs()) return SaveResult.Error(500, "Ordner am Beamer nicht anlegbar.")
 
         val tmp = File(dir, ".${System.nanoTime()}.part")
+        val digest = MessageDigest.getInstance("SHA-256")
         val target = try {
             tmp.outputStream().buffered(256 * 1024).use { out ->
                 val buffer = ByteArray(64 * 1024)
@@ -148,7 +152,15 @@ class PhotoStore(
                     val n = input.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
                     if (n < 0) throw IOException("Übertragung abgebrochen")
                     out.write(buffer, 0, n)
+                    digest.update(buffer, 0, n)
                     left -= n
+                }
+            }
+            // Dasselbe Foto schon vorhanden (z. B. von einem anderen Gast weitergeleitet)? Dann nicht doppelt speichern.
+            if (!isMusic) {
+                duplicateOf(length, digest.digest())?.let { existing ->
+                    tmp.delete()
+                    return SaveResult.Duplicate(existing)
                 }
             }
             synchronized(renameLock) {
@@ -167,6 +179,33 @@ class PhotoStore(
         _arrivals.tryEmit(Arrival(target, albumName, sender))
         requestRefresh()
         return SaveResult.Ok(target)
+    }
+
+    private val hashCache = ConcurrentHashMap<String, Pair<Long, String>>()
+
+    /** Ein eigenes Foto mit gleicher Größe und gleichem Inhalt (SHA-256), sonst null. */
+    private fun duplicateOf(length: Long, hash: ByteArray): File? {
+        val wanted = hash.joinToString("") { "%02x".format(it) }
+        return _albums.value.asSequence().flatMap { it.photos }.map { it.file }
+            .filter { it.length() == length }
+            .firstOrNull { file -> hashOf(file) == wanted }
+    }
+
+    private fun hashOf(file: File): String? {
+        val modified = file.lastModified()
+        hashCache[file.absolutePath]?.let { (m, h) -> if (m == modified) return h }
+        return runCatching {
+            val d = MessageDigest.getInstance("SHA-256")
+            file.inputStream().buffered(256 * 1024).use { s ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val n = s.read(buffer)
+                    if (n < 0) break
+                    d.update(buffer, 0, n)
+                }
+            }
+            d.digest().joinToString("") { "%02x".format(it) }
+        }.getOrNull()?.also { hashCache[file.absolutePath] = modified to it }
     }
 
     fun delete(photo: Photo) = delete(listOf(photo))

@@ -44,6 +44,10 @@ Startseite → **Gerät & USB-Stick**: alle Fotos, die schon auf dem Beamer oder
 
 ## Einstellungen
 
+**Favoriten und Ausblenden:** In der Diashow ▲ → „☆ Favorit“ bzw. „Nicht mehr zeigen“ (Foto bleibt gespeichert). Startseite → „★ Favoriten“ zeigt nur die Favoriten; „Weiter: …“ setzt die zuletzt gesehene Diashow fort. Doppelt gesendete Fotos werden nur einmal gespeichert.
+
+**Bilderrahmen:** Einstellungen → Bilderrahmen: Diashow startet nach einigen Minuten ohne Bedienung oder gleich beim Öffnen, auf Wunsch mit Uhrzeit.
+
 Weitere Einstellungen (Startseite → Einstellungen): Reihenfolge (Aufnahmezeit, Eingang, Zufall), Hintergrund bei Hochformat, Wiederholen, neue Fotos sofort zeigen (Live-Diashow für Feiern), Speicherort intern oder USB-Stick, neuer QR-Code, alle Fotos löschen.
 
 ## Installation auf dem Beamer
