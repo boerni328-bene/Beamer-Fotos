@@ -1,12 +1,12 @@
 # Dieselben, bewährten Versionen wie in den Projekten Moltobene und Tabletten-Checker.
 [versions]
-agp = "9.4.1"
-kotlin = "2.4.20"
+agp = "9.5.3"
+kotlin = "2.4.21"
 coreKtx = "1.19.1"
 activityCompose = "1.9.3"
-composeBom = "2026.09.00"
-coroutines = "1.10.2"
-zxing = "3.5.3"
+composeBom = "2026.11.01"
+coroutines = "1.11.0"
+zxing = "3.5.4"
 media3 = "1.11.1"
 junit = "4.13.2"
 
