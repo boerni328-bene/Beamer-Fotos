@@ -41,4 +41,4 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
    - Fingerzoom auf dem iPhone.
    - Schnell senden auf dem iPhone (HEIC bleibt Original).
 2. Risiken: AVI/MKV-Codecs, PlayerView mit Compose-Einblendungen, viele Fotos in `ShowState` (Liste wird bei jedem Wechsel kopiert).
-3. 0.11.0 (ungeprüft): Bildeinstellung je Foto (`Adjust` in Picture.kt, getestet; `Settings.adjusts`, Prefs „bild:<Pfad>“, wandert mit copy/move/forgetRotation; PicturePanel mit `photoKey` und Zeile „Gilt für“; Diashow nutzt `adjustOf(photo)`). Lizenz GPL-3.0 (LICENSE, README). Keine offenen Ideen.
+3. 0.11.0: Bildeinstellung je Foto (vom Inhaber geprüft, funktioniert) (`Adjust` in Picture.kt, getestet; `Settings.adjusts`, Prefs „bild:<Pfad>“, wandert mit copy/move/forgetRotation; PicturePanel mit `photoKey` und Zeile „Gilt für“; Diashow nutzt `adjustOf(photo)`). Lizenz GPL-3.0 (LICENSE, README). Keine offenen Ideen.
