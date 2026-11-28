@@ -134,13 +134,33 @@ class SettingsStore(context: Context) {
         _token.value = newToken()
     }
 
+    private val _adjusts = MutableStateFlow(
+        prefs.all.filterKeys { it.startsWith(ADJ) }
+            .mapNotNull { (k, v) -> (v as? String)?.let(Adjust::decode)?.let { k.removePrefix(ADJ) to it } }
+            .toMap()
+    )
+    /** Fotos mit eigener Bildeinstellung: Pfad → Einstellung (ersetzt die für alle Fotos). */
+    val adjusts: StateFlow<Map<String, Adjust>> = _adjusts
+
+    /** Eigene Bildeinstellung für ein Foto setzen; null = wieder die für alle Fotos. */
+    fun setAdjust(path: String, adjust: Adjust?) {
+        if (adjust == null) {
+            if (path !in _adjusts.value) return
+            _adjusts.value = _adjusts.value - path
+            prefs.edit().remove(ADJ + path).apply()
+        } else {
+            _adjusts.value = _adjusts.value + (path to adjust)
+            prefs.edit().putString(ADJ + path, adjust.encode()).apply()
+        }
+    }
+
     fun rotate(path: String) {
         val deg = ((_rotations.value[path] ?: 0) + 90) % 360
         _rotations.value = if (deg == 0) _rotations.value - path else _rotations.value + (path to deg)
         prefs.edit().apply { if (deg == 0) remove(ROT + path) else putInt(ROT + path, deg) }.apply()
     }
 
-    /** Drehung, Favorit und Ausblendung mitnehmen, wenn ein Foto verschoben wird. */
+    /** Drehung, Bildeinstellung, Favorit und Ausblendung mitnehmen, wenn ein Foto verschoben wird. */
     fun moveRotation(from: String, to: String) {
         copyRotation(from, to)
         forgetRotation(from)
@@ -151,6 +171,7 @@ class SettingsStore(context: Context) {
             _rotations.value = _rotations.value + (to to deg)
             prefs.edit().putInt(ROT + to, deg).apply()
         }
+        _adjusts.value[from]?.let { setAdjust(to, it) }
         if (from in _favorites.value) setMark(_favorites, FAV, to, true)
         if (from in _hidden.value) setMark(_hidden, HIDDEN, to, true)
     }
@@ -160,6 +181,7 @@ class SettingsStore(context: Context) {
             _rotations.value = _rotations.value - path
             prefs.edit().remove(ROT + path).apply()
         }
+        setAdjust(path, null)
         setMark(_favorites, FAV, path, false)
         setMark(_hidden, HIDDEN, path, false)
     }
@@ -253,6 +275,7 @@ class SettingsStore(context: Context) {
 
     private companion object {
         const val ROT = "drehung:"
+        const val ADJ = "bild:"
         const val FAV = "favoriten"
         const val HIDDEN = "ausgeblendet"
         const val RESUME = "weiter:"

@@ -3,6 +3,12 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.11.0] – 2026-11-28 (versionCode 18)
+
+### Neu
+- **Bildeinstellung je Foto:** In der Diashow ▲ → „Bild“ → „Gilt für“ auf „nur dieses Foto“ stellen; dann wirken Automatisch, Helligkeit, Kontrast, Farbe, Wärme und Schärfe nur auf das aktuelle Foto. Die Einstellung wird gemerkt und beim Verschieben oder Kopieren mitgenommen, das Original bleibt unverändert. „alle Fotos“ hebt sie wieder auf. Bei Paaren, Collagen und Videos gilt das Menü weiterhin für alle Fotos.
+- **Lizenz:** GPL-3.0 (Datei LICENSE), wie Moltobene.
+
 ## [0.10.2] – 2026-11-28 (versionCode 17)
 
 ### Geändert

@@ -22,11 +22,13 @@ Die Handy-Seite ist zugleich Fernbedienung: blättern, Pause, Bildleiste zum Ant
 | ◀ ▶ | voriges / nächstes Foto |
 | OK | Pause / weiter (auch bei Videos) |
 | ⏪ ⏩ | bei Videos 10 Sekunden zurück / vor |
-| ▲ | Menü: Pause, Musik (▲ ▼ Sender wechseln), Drehen, Zoom (stufenlos bis 6×), Bild (automatisch, Helligkeit, Kontrast, Farbe, Wärme, Schärfe), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
+| ▲ | Menü: Pause, Musik (▲ ▼ Sender wechseln), Drehen, Zoom (stufenlos bis 6×), Bild (automatisch, Helligkeit, Kontrast, Farbe, Wärme, Schärfe; „Gilt für“: alle Fotos oder nur dieses Foto), Anzeigedauer, Übergang, Bildgröße, Infos, QR-Code, Foto löschen |
 | ▼ | Bildleiste: zu einem beliebigen Foto springen |
 | Zurück | Menü schließen bzw. Diashow beenden |
 
 Zoom: ▲ und ▼ gedrückt halten zoomt fließend, OK wechselt zum Verschieben mit den Pfeiltasten (und zurück), Zurück beendet den Zoom.
+
+**Bild je Foto:** Im Menü „Bild“ bei „Gilt für“ auf „nur dieses Foto“ stellen, dann wirken die Regler nur auf das aktuelle Foto (das Original bleibt unverändert). „alle Fotos“ hebt die eigene Einstellung wieder auf.
 
 **Fotos je Bild** (Einstellungen): ein Foto, zwei Hochformat-Fotos nebeneinander oder Collage aus bis zu 4 Fotos.
 
@@ -84,3 +86,7 @@ Ein Update wird genauso installiert; die Fotos bleiben dabei erhalten.
 ## Entwicklung
 
 Kotlin und Jetpack Compose. Gebaut wird nur über GitHub Actions (siehe `.github/workflows/build.yml`); jeder Push auf `main` baut, eine neue `versionName` ergibt ein Release.
+
+## Lizenz
+
+Beamer-Fotos steht unter der [GNU General Public License v3.0](LICENSE) (GPL-3.0): Die App darf frei genutzt, weitergegeben und verändert werden; veränderte Fassungen müssen wieder unter derselben Lizenz und mit Quelltext erscheinen. Die eingebauten Bausteine (AndroidX, Jetpack Compose, Media3, Kotlin Coroutines, ZXing) stehen unter der Apache-Lizenz 2.0. Das Radioverzeichnis radio-browser.info ist ein freier Dienst.

@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 28.11.2026 · `main` = Version 0.10.2 (versionCode 17) · Regeln und Code-Aufbau in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 28.11.2026 · `main` = Version 0.11.0 (versionCode 18) · Regeln und Code-Aufbau in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -41,4 +41,4 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
    - Fingerzoom auf dem iPhone.
    - Schnell senden auf dem iPhone (HEIC bleibt Original).
 2. Risiken: AVI/MKV-Codecs, PlayerView mit Compose-Einblendungen, viele Fotos in `ShowState` (Liste wird bei jedem Wechsel kopiert).
-3. Ideen: Bildeinstellungen je Foto. Offene Frage: Lizenz (Moltobene: GPL-3.0)?
+3. 0.11.0 (ungeprüft): Bildeinstellung je Foto (`Adjust` in Picture.kt, getestet; `Settings.adjusts`, Prefs „bild:<Pfad>“, wandert mit copy/move/forgetRotation; PicturePanel mit `photoKey` und Zeile „Gilt für“; Diashow nutzt `adjustOf(photo)`). Lizenz GPL-3.0 (LICENSE, README). Keine offenen Ideen.

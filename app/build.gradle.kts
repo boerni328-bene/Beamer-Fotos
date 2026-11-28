@@ -16,8 +16,8 @@ android {
         // Android 9: ImageDecoder (liest auch HEIC-Fotos vom iPhone und dreht Fotos richtig).
         minSdk = 28
         targetSdk = 35
-        versionCode = 17
-        versionName = "0.10.2"
+        versionCode = 18
+        versionName = "0.11.0"
     }
 
     // Der Signaturschlüssel kommt aus Umgebungsvariablen (auf GitHub aus den Secrets).

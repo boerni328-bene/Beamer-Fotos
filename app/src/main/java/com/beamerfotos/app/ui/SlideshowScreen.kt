@@ -78,6 +78,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
+import com.beamerfotos.app.data.Adjust
+import com.beamerfotos.app.data.adjust
 import com.beamerfotos.app.data.Album
 import com.beamerfotos.app.data.Background
 import com.beamerfotos.app.data.Fit
@@ -123,6 +125,10 @@ private const val ZOOM_SPEED = 1.1f
 private const val PAN_SPEED = 0.6f
 
 @Composable
+private fun rememberFullOf(photo: Photo?, width: Int, height: Int, a: Adjust): ImageBitmap? =
+    rememberFull(photo, width, height, a.autoEnhance, a.sharpness)
+
+@Composable
 private fun rememberFull(photo: Photo?, width: Int, height: Int, auto: Boolean, sharpness: Int): ImageBitmap? {
     val state = remember(photo?.key) { mutableStateOf(photo?.let { ImageLoader.cachedFull(it.file, auto, sharpness) }) }
     // Ändert sich die Verbesserung, bleibt das bisherige Bild stehen, bis das neue berechnet ist.
@@ -143,6 +149,9 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
     val albums by graph.store.albums.collectAsState()
     val mediaAlbums by graph.media.albums.collectAsState()
     val rotations by graph.settings.rotations.collectAsState()
+    val adjusts by graph.settings.adjusts.collectAsState()
+    // Eigene Bildeinstellung des Fotos, sonst die für alle Fotos.
+    fun adjustOf(p: Photo?): Adjust = p?.let { adjusts[it.key] } ?: settings.adjust
     val favorites by graph.settings.favorites.collectAsState()
     val hidden by graph.settings.hidden.collectAsState()
     val url = rememberUploadUrl(graph)
@@ -449,16 +458,15 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
         val heightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
-        val auto = settings.autoEnhance
-        val sharpness = settings.sharpness
-        val currentImage = rememberFull(current, widthPx, heightPx, auto, sharpness)
-        val previousImage = rememberFull(previous, widthPx, heightPx, auto, sharpness)
+        @Composable fun fullImage(p: Photo?) = rememberFullOf(p, widthPx, heightPx, adjustOf(p))
+        val currentImage = fullImage(current)
+        val previousImage = fullImage(previous)
         // Weitere Fotos bei Paaren und Collagen.
-        val groupImages = listOf(currentImage) + currentGroup.drop(1).map { key(it.key) { rememberFull(it, widthPx, heightPx, auto, sharpness) } }
-        val previousGroupImages = listOf(previousImage) + previousGroup.drop(1).map { key(it.key) { rememberFull(it, widthPx, heightPx, auto, sharpness) } }
+        val groupImages = listOf(currentImage) + currentGroup.drop(1).map { key(it.key) { fullImage(it) } }
+        val previousGroupImages = listOf(previousImage) + previousGroup.drop(1).map { key(it.key) { fullImage(it) } }
 
         // Nächstes Bild schon vorab laden (und verbessern).
-        LaunchedEffect(index, photos.size, auto, sharpness, settings.layout) {
+        LaunchedEffect(index, photos.size, settings.adjust, adjusts, settings.layout) {
             if (photos.isEmpty()) return@LaunchedEffect
             val nextStart = (index + groupAt(index)).mod(photos.size)
             if (settings.layout != Layout.SINGLE) {
@@ -466,7 +474,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
                     for (i in nextStart until minOf(photos.size, nextStart + Layouts.COLLAGE_SIZE)) ImageLoader.isPortrait(photos[i].file)
                 }
             }
-            groupFrom(nextStart).forEach { ImageLoader.full(it.file, widthPx, heightPx, auto, sharpness) }
+            groupFrom(nextStart).forEach { val a = adjustOf(it); ImageLoader.full(it.file, widthPx, heightPx, a.autoEnhance, a.sharpness) }
         }
 
         val p = transition.value
@@ -509,8 +517,10 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
 
         // Bildverbesserung: Farbmatrix je Foto (Videos bleiben unverändert).
         fun filterFor(photo: Photo?): ColorFilter? {
-            if (photo == null || photo.isVideo || Picture.slidersNeutral(settings)) return null
-            return ColorFilter.colorMatrix(ColorMatrix(Picture.matrix(settings)))
+            if (photo == null || photo.isVideo) return null
+            val a = adjustOf(photo)
+            if (Picture.slidersNeutral(a)) return null
+            return ColorFilter.colorMatrix(ColorMatrix(Picture.matrix(a)))
         }
 
         // Paar oder Collage: jedes Foto in seinem Feld.
@@ -662,6 +672,7 @@ fun SlideshowScreen(graph: AppGraph, albumKey: String?, startKey: String?, sende
             )
             Overlay.PICTURE -> PicturePanel(
                 graph = graph,
+                photoKey = current?.takeIf { !it.isVideo && currentGroup.size <= 1 }?.key,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC0F1826)),
             )
             Overlay.NONE -> Unit

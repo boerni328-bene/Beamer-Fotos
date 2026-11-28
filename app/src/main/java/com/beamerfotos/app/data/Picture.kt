@@ -19,14 +19,20 @@ object Picture {
         0f, 0f, 0f, 1f, 0f,
     )
 
-    fun isNeutral(s: SlideSettings) =
+    fun isNeutral(s: SlideSettings) = isNeutral(s.adjust)
+
+    fun isNeutral(s: Adjust) =
         s.brightness == 0 && s.contrast == 0 && s.saturation == 0 && s.warmth == 0 && !s.autoEnhance && s.sharpness == 0
 
     /** Wirken die Regler Helligkeit, Kontrast, Sättigung, Wärme (Farbmatrix)? „Automatisch“ und „Schärfe“ rechnen an den Pixeln (Enhance). */
-    fun slidersNeutral(s: SlideSettings) = s.brightness == 0 && s.contrast == 0 && s.saturation == 0 && s.warmth == 0
+    fun slidersNeutral(s: SlideSettings) = slidersNeutral(s.adjust)
+
+    fun slidersNeutral(s: Adjust) = s.brightness == 0 && s.contrast == 0 && s.saturation == 0 && s.warmth == 0
 
     /** Farbmatrix für die Regler Helligkeit, Kontrast, Sättigung und Wärme. */
-    fun matrix(s: SlideSettings): FloatArray {
+    fun matrix(s: SlideSettings): FloatArray = matrix(s.adjust)
+
+    fun matrix(s: Adjust): FloatArray {
         var m = IDENTITY.copyOf()
         val c = 1f + s.contrast / 100f
         m = concat(scaleOffset(c, 128f * (1f - c) + s.brightness * 1.5f), m)
@@ -82,3 +88,40 @@ object Picture {
         return Triple(ch(0), ch(1), ch(2))
     }
 }
+
+/** Bildeinstellung: für alle Fotos (aus den Einstellungen) oder für ein einzelnes Foto. */
+data class Adjust(
+    val brightness: Int = 0,
+    val contrast: Int = 0,
+    val saturation: Int = 0,
+    val warmth: Int = 0,
+    val autoEnhance: Boolean = false,
+    val sharpness: Int = 0,
+) {
+    /** Als Text zum Speichern, z. B. „10,0,-20,0,1,30“. */
+    fun encode() = "$brightness,$contrast,$saturation,$warmth,${if (autoEnhance) 1 else 0},$sharpness"
+
+    companion object {
+        fun decode(text: String): Adjust? {
+            val v = text.split(',').map { it.trim().toIntOrNull() ?: return null }
+            if (v.size != 6) return null
+            return Adjust(
+                brightness = v[0].coerceIn(Picture.BRIGHTNESS),
+                contrast = v[1].coerceIn(Picture.CONTRAST),
+                saturation = v[2].coerceIn(Picture.SATURATION),
+                warmth = v[3].coerceIn(Picture.WARMTH),
+                autoEnhance = v[4] != 0,
+                sharpness = v[5].coerceIn(Picture.SHARPNESS),
+            )
+        }
+    }
+}
+
+/** Die Bildeinstellung für alle Fotos. */
+val SlideSettings.adjust: Adjust
+    get() = Adjust(brightness, contrast, saturation, warmth, autoEnhance, sharpness)
+
+fun SlideSettings.withAdjust(a: Adjust) = copy(
+    brightness = a.brightness, contrast = a.contrast, saturation = a.saturation,
+    warmth = a.warmth, autoEnhance = a.autoEnhance, sharpness = a.sharpness,
+)
