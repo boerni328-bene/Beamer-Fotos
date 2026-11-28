@@ -77,6 +77,7 @@ Ein Update wird genauso installiert; die Fotos bleiben dabei erhalten.
 - Der Beamer nimmt Fotos nur an, solange die App geöffnet ist.
 - iPhone-Fotos (HEIC) wandelt das iPhone beim Senden automatisch in JPG um.
 - Fotos auf dem USB-Stick liegen im Ordner `Pictures/Beamer-Fotos`, gesendete Musik in `Music/Beamer-Fotos`. Beides bleibt beim Deinstallieren der App erhalten und ist am PC direkt zu finden.
+- Als Speicher eignen sich USB-Sticks mit exFAT oder FAT32. NTFS-Sticks kann der Beamer nur lesen (Fotos zeigen, Musik spielen).
 - Ohne den Code aus dem QR-Code nimmt der Beamer nichts an. „Neuen QR-Code erzeugen“ in den Einstellungen sperrt alte Links.
 - Kein Internet nötig außer dem WLAN zu Hause, kein Konto, keine Cloud, keine Werbung.
 

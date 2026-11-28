@@ -1,8 +1,5 @@
 package com.beamerfotos.app.ui
 
-import android.content.ActivityNotFoundException
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beamerfotos.app.AppGraph
 import com.beamerfotos.app.data.Location
-import com.beamerfotos.app.data.UsbAccess
 import com.beamerfotos.app.data.cycle
 import com.beamerfotos.app.data.intervalLabel
 import com.beamerfotos.app.data.nextIdle
@@ -64,17 +60,6 @@ fun SettingsScreen(graph: AppGraph) {
     LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
     fun onOff(b: Boolean) = if (b) "an" else "aus"
     val context = LocalContext.current
-    // Test 0.10.1: USB-Stick über die Ordnerauswahl von Android freigeben.
-    var usbMessage by remember { mutableStateOf<String?>(null) }
-    val usbLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val tree = result.data?.data
-        if (tree == null) {
-            usbMessage = "Keine Freigabe erteilt (abgebrochen)."
-        } else {
-            usbMessage = "Prüfe …"
-            scope.launch { usbMessage = withContext(Dispatchers.IO) { UsbAccess.test(context, tree) } }
-        }
-    }
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
     }
@@ -178,25 +163,6 @@ fun SettingsScreen(graph: AppGraph) {
                     }
                 }
             }
-            item {
-                SettingRow("USB-Stick freigeben (Test)", "Ordnerauswahl öffnen") {
-                    usbMessage = null
-                    try {
-                        usbLauncher.launch(UsbAccess.pickIntent(context))
-                    } catch (e: ActivityNotFoundException) {
-                        usbMessage = "Die Ordnerauswahl von Android gibt es auf diesem Beamer nicht."
-                    }
-                }
-            }
-            usbMessage?.let { msg ->
-                item {
-                    Text(
-                        msg + if (msg.startsWith("Prüfe") || msg.startsWith("✓")) "" else
-                            " In der Auswahl den Stick öffnen und unten „Diesen Ordner verwenden“ bzw. „Zugriff erlauben“ wählen.",
-                        color = Sky, fontSize = 15.sp, modifier = Modifier.padding(start = 16.dp),
-                    )
-                }
-            }
             moveMessage?.let { msg ->
                 item { Text(msg, color = Sky, fontSize = 15.sp, modifier = Modifier.padding(start = 16.dp)) }
             }
@@ -204,6 +170,7 @@ fun SettingsScreen(graph: AppGraph) {
                 item {
                     Text(
                         "USB-Stick einstecken und OK auf „Neue Fotos speichern auf“ drücken, dann erscheint er hier. " +
+                            "Der Stick muss mit exFAT oder FAT32 formatiert sein; NTFS-Sticks kann der Beamer nur lesen. " +
                             "Android meldet: " + graph.store.storageReport().ifEmpty { "nichts" },
                         color = Muted, fontSize = 14.sp, modifier = Modifier.padding(start = 16.dp),
                     )

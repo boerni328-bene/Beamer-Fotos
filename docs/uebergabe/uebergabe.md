@@ -1,6 +1,6 @@
 # Beamer-Fotos – Übergabe (einzige Datei, wird laufend überschrieben)
 
-Stand: 27.11.2026 · `main` = Version 0.10.1 (versionCode 16) · Regeln und Code-Aufbau in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
+Stand: 28.11.2026 · `main` = Version 0.10.2 (versionCode 17) · Regeln und Code-Aufbau in `CLAUDE.md`, Verlauf in Git und `CHANGELOG.md`.
 
 ## Projekt in drei Sätzen
 Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android 9) für den XGIMI MoGo 4 Laser. Handys senden Fotos, Videos und Musik per QR-Code über eine Browser-Seite an einen kleinen Webserver in der App; die App zeigt sie als Diashow, spielt Musik und Radio. Repository `boerni328-bene/Beamer-Fotos` (öffentlich), Build nur über GitHub Actions, Installation über die App „Downloader“.
@@ -34,7 +34,7 @@ Beamer-Fotos: Android-TV-App (Kotlin, Compose, `com.beamerfotos.app`, ab Android
   - Alles wahlweise auf dem USB-Stick; gesendete Musik löschen und verschieben.
 
 ## Offen / nächste Schritte
-0. USB-Stick: Inhaber-Test 0.10.0 ergab nur „Intern“. Android meldet den Stick (Transcend, wechselbar, mounted, /storage/BE0ACC490ACBFC81, vermutlich NTFS), aber `mkdirs` für Pictures/ und Android/data scheitert: Apps dürfen auf Google TV wohl nur lesen. 0.10.1 hat einen Test „USB-Stick freigeben“ (`data/UsbAccess`, SAF-Ordnerauswahl, Testdatei per DocumentsContract). Ergebnis abwarten. Klappt es, das Speichern auf dem Stick auf SAF umbauen (Tree-URI merken, Schreiben über DocumentsContract, Lesen weiter über den Pfad). Sonst den Stick mit exFAT formatieren oder nur lesen.
+0. USB-Stick: Inhaber-Test 0.10.0 ergab nur „Intern“. Android meldet den Stick (Transcend, wechselbar, mounted, /storage/BE0ACC490ACBFC81, vermutlich NTFS), aber `mkdirs` für Pictures/ und Android/data scheitert: Apps dürfen auf Google TV wohl nur lesen. 0.10.1 hat einen Test „USB-Stick freigeben“ (`data/UsbAccess`, SAF-Ordnerauswahl, Testdatei per DocumentsContract). Ergebnis 28.11.: Die Ordnerauswahl (DocumentsUI) fehlt auf dem MoGo 4, SAF scheidet aus. Mit exFAT formatiert klappt das Verschieben auf den Stick (vom Inhaber geprüft); NTFS ist nur lesbar. 0.10.2: Test und `UsbAccess` entfernt, Hinweis zu exFAT/FAT32 in den Einstellungen und im README. Erledigt.
 1. Rückmeldung des Inhabers zu 0.8.2 bis 0.10.0 abwarten. Besonders prüfen:
    - USB-Stick erscheint und ist beschreibbar.
    - Collage-Speicher und -Geschwindigkeit auf dem MoGo 4.

@@ -3,6 +3,11 @@
 Alle wichtigen Änderungen an der App werden hier festgehalten.
 Die neueste Version steht oben. Versionsschema: Major.Minor.Patch.
 
+## [0.10.2] – 2026-11-28 (versionCode 17)
+
+### Geändert
+- Test „USB-Stick freigeben“ wieder entfernt: Die Ordnerauswahl von Android fehlt auf dem MoGo 4. Ergebnis: Sticks mit exFAT oder FAT32 funktionieren als Speicher, NTFS-Sticks kann der Beamer nur lesen. Die Einstellungen weisen darauf hin, wenn kein Stick als Speicher erscheint.
+
 ## [0.10.1] – 2026-11-27 (versionCode 16)
 
 ### Test
